@@ -1,0 +1,41 @@
+# Copy to config/config.yaml and adjust.
+
+printers:
+  - id: voron                         # used in URLs: /watch/voron
+    name: Voron 2.4
+    moonraker: http://192.168.1.50:7125
+    # api_key: ...                    # only if the server's IP isn't in Moonraker's trusted_clients
+    # public: true                    # guests may watch the live view (starting value; switch it in the dashboard)
+    # final_frame: auto               # last frame: auto | after_end (parked head) | before_end (last layer)
+    # camera:                         # optional: by default taken from Mainsail/Fluidd's webcam settings
+    #   name: Main                    # pick one webcam if the printer has several
+    #   stream: http://192.168.1.50/webcam/?action=stream
+    #   snapshot: http://192.168.1.50/webcam/?action=snapshot
+    #   rotation: 180
+    #   flip_horizontal: false
+    #   flip_vertical: false
+
+  - id: ender
+    name: Ender 3
+    moonraker: http://192.168.1.51:7125
+
+# Re-streaming through go2rtc (the other container). Remove to proxy the camera directly.
+go2rtc: http://go2rtc:1984
+
+timelapse:
+  mode: layer          # layer: one frame per layer change | interval: one frame every `interval` seconds
+  interval: 10         # also the fallback when the layer can't be determined
+  min_frame_gap: 2     # seconds; caps the frame rate for tiny layers / vase mode
+  fps: 30
+  hold_last: 2         # seconds the finished print is held at the end of the video
+  crf: 23              # x264 quality: lower is better and bigger
+  keep_frames: false   # keep the JPEGs after rendering (allows re-rendering)
+
+poll_interval: 1       # seconds between Moonraker polls
+max_viewers: 10        # simultaneous live viewers per printer
+
+# Login (at /login) for the timelapse history and the public/private switches. Required before
+# exposing the app. Without logging in, people only see public live views and timelapses you shared.
+# auth:
+#   username: admin
+#   password: change-me

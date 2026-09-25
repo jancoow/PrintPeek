@@ -1,0 +1,9 @@
+# your own config (printer addresses, password)
+config/config.yaml
+data/
+.env
+
+__pycache__/
+*.pyc
+venv/
+.venv/
