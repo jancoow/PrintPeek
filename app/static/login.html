@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Log In</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    body { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+    form {
+      width: min(360px, 100%); display: grid; gap: 12px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px;
+    }
+    label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+    input {
+      font: inherit; color: var(--text); background: var(--surface-2);
+      border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px;
+    }
+    button[type="submit"] { background: var(--accent); border-color: var(--accent); color: #fff; padding: 8px; }
+    .error { color: var(--bad); font-size: 14px; min-height: 1.2em; margin: 0; }
+  </style>
+</head>
+<body>
+  <form id="form">
+    <h1>Log in</h1>
+    <label>Username <input name="username" autocomplete="username" required autofocus></label>
+    <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
+    <p class="error" id="error"></p>
+    <button type="submit">Log in</button>
+    <a href="/">← Back to the live view</a>
+  </form>
+  <script>
+    document.getElementById("form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const form = new FormData(e.target);
+      const button = e.target.querySelector("button");
+      button.disabled = true;
+      const r = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: form.get("username"), password: form.get("password") }),
+      });
+      button.disabled = false;
+      if (r.ok) location.href = "/";
+      else document.getElementById("error").textContent = (await r.json()).detail || "Couldn't log in";
+    });
+  </script>
+</body>
+</html>

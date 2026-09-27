@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Live Print</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    html, body { height: 100%; }
+    body { display: flex; flex-direction: column; background: #000; color: #fff; }
+    .stage { flex: 1; min-height: 0; display: grid; place-items: center; overflow: hidden; }
+    .stage img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .offair { color: #8d95a3; text-align: center; padding: 16px; }
+    .info {
+      display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: center;
+      padding: 10px 16px; background: #111; font-size: 14px; font-variant-numeric: tabular-nums;
+    }
+    .info .name { font-weight: 600; }
+    .info .label { color: #8d95a3; }
+    .info .bar { flex: 1 1 120px; background: #2a2f38; }
+    .info .bar .fill { background: #5b8dff; }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <img id="cam" alt="Live camera">
+    <p id="offair" class="offair" hidden>This printer isn't live right now. This page will pick it up when it is.</p>
+  </div>
+  <div class="info" id="info" hidden>
+    <span class="name" id="name"></span>
+    <span id="state"></span>
+    <span id="file" class="label"></span>
+    <div class="bar"><div class="fill" id="fill"></div></div>
+    <span id="progress"></span>
+    <span><span class="label">Layer</span> <span id="layer">–</span></span>
+    <span><span class="label">Remaining</span> <span id="eta">–</span></span>
+  </div>
+  <script src="/static/common.js"></script>
+  <script>
+    const id = location.pathname.split("/").filter(Boolean).pop();
+    const $ = (s) => document.getElementById(s);
+    const stream = liveStream($("cam"), id);
+
+    function offAir() {
+      stream.set(false);
+      $("cam").hidden = true;
+      $("info").hidden = true;
+      $("offair").hidden = false;
+    }
+
+    async function refresh() {
+      try {
+        const r = await fetch(`/api/printers/${id}/status`);
+        if (r.status === 404) return offAir();
+        const p = await r.json();
+        const active = p.state === "printing" || p.state === "paused";
+        document.title = `${p.name} · Live`;
+        $("offair").hidden = true;
+        $("cam").hidden = false;
+        $("info").hidden = false;
+        $("name").textContent = p.name;
+        $("state").textContent = STATE_LABELS[p.state] || p.state;
+        $("file").textContent = active ? (p.filename || "").split("/").pop() : "";
+        $("fill").style.width = `${(active ? p.progress : 0) * 100}%`;
+        $("progress").textContent = active ? `${(p.progress * 100).toFixed(1)}%` : "";
+        $("layer").textContent = p.layer ? `${p.layer}${p.total_layers ? " / " + p.total_layers : ""}` : "–";
+        $("eta").textContent = active ? fmtDuration(p.eta) : "–";
+        $("cam").style.transform = camTransform(p.camera);
+        stream.set(p.camera.available);
+      } catch (e) { console.warn(e); }
+    }
+    refresh();
+    setInterval(refresh, 3000);
+  </script>
+</body>
+</html>

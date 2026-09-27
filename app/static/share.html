@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Print Timelapse</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    main { max-width: 960px; }
+    video { width: 100%; display: block; background: #000; border-radius: var(--radius); max-height: 75vh; }
+    h1 { margin: 16px 0 4px; overflow-wrap: anywhere; }
+    .sub { color: var(--muted); }
+  </style>
+</head>
+<body>
+  <main>
+    <video id="video" controls playsinline autoplay muted loop></video>
+    <h1 id="title"></h1>
+    <div class="sub" id="sub"></div>
+  </main>
+  <script src="/static/common.js"></script>
+  <script>
+    const token = location.pathname.split("/").filter(Boolean).pop();
+    const base = `/api/shares/${token}`;
+    fetch(base).then((r) => r.json()).then((t) => {
+      const name = (t.filename || "").split("/").pop().replace(/\.gcode$/i, "");
+      document.title = `${name} · Timelapse`;
+      document.getElementById("title").textContent = name;
+      const date = new Date(t.started * 1000).toLocaleDateString(undefined, { dateStyle: "long" });
+      document.getElementById("sub").textContent =
+        [t.printer_name, date, t.print_duration ? `printed in ${fmtDuration(t.print_duration)}` : null].filter(Boolean).join(" · ");
+    });
+    const video = document.getElementById("video");
+    video.poster = `${base}/thumb.jpg`;
+    video.src = `${base}/video.mp4`;
+  </script>
+</body>
+</html>

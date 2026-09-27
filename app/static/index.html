@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>3D Print</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="top">
+    <h1>3D Print</h1>
+    <a id="login" href="/login" hidden>Log in</a>
+    <button id="logout" hidden>Log out</button>
+  </header>
+  <main>
+    <section id="printers" class="printers"></section>
+    <p id="nothing-live" class="empty" hidden>None of the printers are live right now.</p>
+
+    <section id="timelapse-section" class="timelapses" hidden>
+      <div class="section-head">
+        <h2>Timelapses</h2>
+        <div id="filters" class="chips"></div>
+      </div>
+      <div id="timelapses" class="grid"></div>
+    </section>
+  </main>
+
+  <dialog id="player">
+    <div class="player-head">
+      <span id="player-title"></span>
+      <button id="player-close" aria-label="Close">✕</button>
+    </div>
+    <video id="player-video" controls playsinline loop></video>
+    <div class="player-actions">
+      <a id="player-download" download><button>Download</button></a>
+      <button id="player-share" title="Make a public link to just this video">Share…</button>
+      <span id="player-shared" class="shared" hidden>
+        <input id="player-share-url" readonly aria-label="Share link">
+        <button id="player-copy">Copy</button>
+        <button id="player-unshare">Stop sharing</button>
+      </span>
+      <span class="spacer"></span>
+      <button id="player-render">Re-render</button>
+      <button id="player-delete" class="danger">Delete</button>
+    </div>
+  </dialog>
+
+  <template id="printer-card">
+    <article class="card">
+      <a class="cam" target="_blank" title="Open the live view">
+        <img alt="">
+        <span class="nocam" hidden>No camera</span>
+        <span class="badge" hidden><span class="dot">●</span> REC <span class="frames"></span></span>
+        <span class="badge visibility" hidden></span>
+      </a>
+      <div class="body">
+        <div class="row"><h3 class="name"></h3><span class="state"></span></div>
+        <div class="file"></div>
+        <div class="bar"><div class="fill"></div></div>
+        <dl class="stats">
+          <div><dt>Progress</dt><dd class="progress">–</dd></div>
+          <div><dt>Layer</dt><dd class="layer">–</dd></div>
+          <div><dt>Elapsed</dt><dd class="elapsed">–</dd></div>
+          <div><dt>Remaining</dt><dd class="eta">–</dd></div>
+          <div><dt>Nozzle</dt><dd class="nozzle">–</dd></div>
+          <div><dt>Bed</dt><dd class="bed">–</dd></div>
+        </dl>
+        <div class="actions">
+          <label class="public-ctl" hidden>
+            <span>Live view</span>
+            <select class="public-mode">
+              <option value="off">Private</option>
+              <option value="on">Public</option>
+              <option value="until:1">Public for 1 hour</option>
+              <option value="until:3">Public for 3 hours</option>
+              <option value="until:8">Public for 8 hours</option>
+              <option value="print">Public until this print ends</option>
+              <option value="until" hidden></option>
+            </select>
+          </label>
+          <button class="share">Copy live link</button>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <div id="toast" class="toast"></div>
+  <script src="/static/common.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
