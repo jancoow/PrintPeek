@@ -1,0 +1,8 @@
+# The printer monitor registers each printer's camera here automatically (by printer id).
+# You can also add streams by hand, e.g.:
+# streams:
+#   voron: http://192.168.1.50/webcam/?action=stream
+api:
+  listen: ":1984"
+rtsp:
+  listen: ":8554"
