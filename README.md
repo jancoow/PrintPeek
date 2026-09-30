@@ -1,0 +1,81 @@
+# Printer monitor
+
+A small web app that shows all my Klipper printers on one page, with the live camera, and
+records a timelapse of every print. It runs on a home server in Docker and only talks to
+Moonraker, so nothing has to be installed on the printers.
+
+![Dashboard](docs/screenshot.png)
+
+What it does:
+
+- Live camera, progress, layer, time left and temperatures per printer
+- Timelapse of every print (one frame per layer), rendered to MP4 with ffmpeg when the print ends
+- Camera re-streaming through [go2rtc](https://github.com/AlexxIT/go2rtc), so the printer only
+  serves one stream no matter how many people are watching
+- Make a printer's live view public, for a few hours or until the print is done, and send
+  friends a `/watch/<printer>` link
+- Share a single timelapse with a private link
+
+I use it with a Creality K1 Max and a Snapmaker U1, but it should work with any printer running
+Moonraker (Mainsail or Fluidd).
+
+## Running it
+
+You need Docker with Compose.
+
+```sh
+git clone https://github.com/<you>/printer-monitor.git
+cd printer-monitor
+cp config/config.example.yaml config/config.yaml
+# edit config/config.yaml: add your printers and set a username/password
+docker compose up -d --build
+```
+
+Then open `http://<server>:9022`.
+
+Moonraker has to accept requests from the server. Add the server's IP to `trusted_clients` in
+`moonraker.conf`, or set `api_key` for the printer in the config.
+
+The camera is picked up from the webcam settings in Mainsail/Fluidd. If that doesn't work you
+can set the stream and snapshot URLs yourself, see `config/config.example.yaml`.
+
+### Without Docker
+
+Needs Python 3.11+ and ffmpeg.
+
+```sh
+python3 -m venv venv
+venv/bin/pip install -r requirements.txt
+CONFIG=config/config.yaml DATA_DIR=data venv/bin/uvicorn app.main:app --port 8080
+```
+
+Without go2rtc, remove the `go2rtc:` line from the config and the app will proxy the camera
+directly.
+
+## Layer detection
+
+For exact layer changes, add this to the layer change G-code in your slicer (PrusaSlicer,
+OrcaSlicer, SuperSlicer):
+
+```
+SET_PRINT_STATS_INFO CURRENT_LAYER={layer_num + 1}
+```
+
+If you already have a layer counter in Mainsail you probably have this. Without it the layer is
+estimated from the Z height, which works fine too.
+
+Some printers (like the U1) drop the bed at the end of a print, so the last frame would show an
+empty chamber. The app notices this and ends the video on the last layer instead. You can force
+it with `final_frame: before_end` or `after_end` per printer.
+
+## Putting it online
+
+If you want to reach it from outside, put it behind a reverse proxy with HTTPS (Nginx Proxy
+Manager, Caddy, Cloudflare Tunnel) and make sure `auth` is set in the config. Only expose port
+9022.
+
+Without logging in, people only see the printers you made public and the timelapses you shared.
+The app never sends commands to the printers, it only reads status and camera images.
+
+Don't expose go2rtc's API port (1984). It can be used to run commands, which is why the compose
+file doesn't publish it.
