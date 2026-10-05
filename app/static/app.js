@@ -56,8 +56,10 @@ function updateCard(p) {
   q(".layer").textContent = p.layer ? `${p.layer}${p.total_layers ? " / " + p.total_layers : ""}` : "–";
   q(".elapsed").textContent = active ? fmtDuration(p.print_duration) : "–";
   q(".eta").textContent = active ? fmtDuration(p.eta) : "–";
-  q(".nozzle").textContent = fmtTemp(p.extruder);
+  q(".nozzle").textContent = (p.extruder.tool ? `${p.extruder.tool} ` : "") + fmtTemp(p.extruder);
   q(".bed").textContent = fmtTemp(p.bed);
+  updateEvent(q, p);
+  updateTools(q(".tools"), p.tools);
 
   // Admin: who can see this printer
   const visibility = q(".visibility");
@@ -72,6 +74,43 @@ function updateCard(p) {
     timed.textContent = p.public.mode === "until" ? publicText(p.public) : "";
     select.value = p.public.mode;
   }
+}
+
+// Why the print paused or failed (admins only; guests don't get p.event)
+function updateEvent(q, p) {
+  const box = q(".event");
+  box.hidden = !p.event;
+  if (!p.event) return;
+  const e = p.event;
+  const what = e.kind === "error" ? "Stopped" : "Paused";
+  const when = e.at ? ` at ${fmtClock(e.at)}` : "";
+  box.className = `event ${e.kind}`;
+  q(".event-text").textContent = `${what}${when}: ${e.reason ? e.reason.text : "checking why…"}`;
+  box.title = e.reason?.detail || "";
+  const photo = q(".event-photo");
+  photo.hidden = !e.photo;
+  photo.href = `/api/admin/printers/${p.id}/event.jpg?at=${e.at || ""}`;
+}
+
+// One chip per toolhead: colour, temperature and filament. Faded when this print doesn't use it.
+function updateTools(el, tools) {
+  el.hidden = !tools;
+  if (!tools) return;
+  el.replaceChildren(...tools.map((t) => {
+    const chip = document.createElement("span");
+    chip.className = "tool" + (t.active ? " active" : "") + (t.used === false ? " unused" : "") + (t.mismatch ? " mismatch" : "");
+    const swatch = document.createElement("i");
+    swatch.className = "swatch" + (t.color ? "" : " none");
+    if (t.color) swatch.style.background = t.color;
+    const label = document.createElement("b");
+    label.textContent = t.name;
+    chip.append(swatch, label, ` ${fmtTemp(t)}`);
+    if (t.material) chip.append(` · ${t.material}`);
+    if (t.mismatch) chip.append(" ⚠");
+    chip.title = [t.empty ? "No filament loaded" : t.material, t.mismatch, t.used === false ? "Not used in this print" : ""]
+      .filter(Boolean).join(" · ");
+    return chip;
+  }));
 }
 
 async function setPublic(id, select) {

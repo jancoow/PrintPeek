@@ -194,7 +194,7 @@ def _status(monitor: PrinterMonitor, admin: bool) -> dict:
     s = monitor.status()
     s["public"] = monitor.public.describe()
     if not admin:
-        for key in ("error", "recording", "frames"):
+        for key in ("error", "recording", "frames", "event"):
             s.pop(key, None)
     return s
 
@@ -266,6 +266,15 @@ async def stream(printer_id: str, request: Request):
         media_type=upstream.headers.get("content-type", "multipart/x-mixed-replace"),
         headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"},
     )
+
+
+@app.get("/api/admin/printers/{printer_id}/event.jpg")
+async def event_photo(printer_id: str):
+    """The camera frame from when the print paused or failed."""
+    monitor = monitors.get(printer_id)
+    if monitor is None or monitor.event_photo is None:
+        raise HTTPException(404, "no photo")
+    return Response(monitor.event_photo, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
 
 
 class PublicUpdate(BaseModel):
