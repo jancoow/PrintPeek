@@ -2,54 +2,90 @@
 
 **Peek at your prints, from anywhere.**
 
-A small web app that shows all my Klipper printers on one page, with the live camera, and
-records a timelapse of every print. It runs on a home server in Docker and only talks to
-Moonraker, so nothing has to be installed on the printers.
+Live cameras, automatic timelapses and push notifications for every Klipper printer you own.
+PrintPeek runs on your home server in Docker and only talks to Moonraker over the network.
 
-![Dashboard](docs/screenshot.png)
+**Nothing to install on the printers.** No plugins, no macros, no cloud account.
 
-What it does:
+![PrintPeek dashboard with two printers](docs/dashboard.png)
 
-- Live camera, progress, layer, time left, finish time and temperatures per printer, with the
-  slicer's preview of what's printing
-- Push notifications on your phone when a print finishes, pauses or fails, with a photo
-- When a print pauses or fails, it shows why (filament ran out, a pause in the G-code, the
-  printer's own spaghetti detection) with a photo of that moment
-- Printers with several toolheads (like the U1) show each tool's temperature and filament, and
-  warn when the loaded filament doesn't match what the print was sliced for
-- Timelapse of every print (one frame per layer), rendered to MP4 with ffmpeg when the print ends
-- Camera re-streaming through [go2rtc](https://github.com/AlexxIT/go2rtc), so the printer only
-  serves one stream no matter how many people are watching. The live view is converted to H.264,
-  which needs about a tenth of the bandwidth of the camera's MJPEG stream (nice on mobile data)
-- Make a printer's live view public, for a few hours or until the print is done, and send
-  friends a `/watch/<printer>` link
-- Share a single timelapse with a private link
-- Can be installed on your phone's home screen like an app
+## Timelapses, without touching the printer
 
-I use it with a Creality K1 Max and a Snapmaker U1, but it should work with any printer running
-Moonraker (Mainsail or Fluidd).
+<p align="center"><img src="docs/timelapse.gif" alt="Timelapse of an 8 hour print" width="480"></p>
 
-## Running it
+Every print gets its own timelapse, automatically. PrintPeek follows the print through
+Moonraker, grabs a camera frame on every layer change and renders an MP4 when the print is done.
+There's no timelapse plugin on the printer and nothing to change in your slicer.
 
-You need Docker with Compose.
+- One frame per layer, so the print grows smoothly instead of jumping around
+- Heating, homing and bed probing are left out
+- The video ends on the finished print, even on printers that drop the bed at the end
+- A restart in the middle of a print picks up the same timelapse
+- Browse them per printer, download them, or share one video with a private link
+
+![Timelapse library](docs/timelapses.png)
+
+![Playing and sharing a timelapse](docs/player.jpg)
+
+## In your pocket
+
+<p align="center">
+  <img src="docs/phone.png" alt="Dashboard on a phone" width="260">
+  &nbsp;
+  <img src="docs/phone-live.jpg" alt="Full screen live view" width="520">
+</p>
+
+- **Install it like an app.** Add it to your home screen and it opens full screen, with its own icon.
+- **Push notifications.** Your phone buzzes when a print finishes, pauses or fails, with a photo
+  of that moment. Also when a printer drops off the network in the middle of a print.
+- **Light on mobile data.** The live view is converted to H.264 at about 1.5 Mbit/s, where a
+  typical MJPEG printer camera uses 10 Mbit/s or more.
+
+## Everything else
+
+- **All your printers on one page.** Camera, progress, layer, time left, when it'll be done,
+  temperatures and the slicer's preview of what's printing.
+- **Know why it paused.** "Filament ran out on T1", "Possible spaghetti, detected by the printer's
+  camera", "The G-code paused the print with M600". PrintPeek works it out from the printer's
+  sensors, the G-code and the console.
+- **Multiple toolheads.** Each tool's temperature and filament colour, and a warning when the
+  filament that's loaded doesn't match what the print was sliced for.
+- **Let friends watch.** Make a printer public for an hour, an evening or until the print is done,
+  and send a `/watch` link. Switching it back to private cuts everyone off right away.
+- **Easy on the printer.** [go2rtc](https://github.com/AlexxIT/go2rtc) pulls each camera once, no
+  matter how many people are watching.
+- **Looks, doesn't touch.** PrintPeek never sends a command to a printer. It only reads status and
+  camera images.
+
+## Works with
+
+Any printer running Klipper and Moonraker with a webcam set up in Mainsail or Fluidd: a Voron, a
+RatRig, a rooted Creality K1, a Snapmaker U1, your own build. The camera is picked up from the
+webcam settings you already have.
+
+Tested on a Creality K1 Max and a Snapmaker U1, including the U1's four toolheads and its built-in
+spaghetti detection.
+
+## Quick start
+
+You need a machine with Docker that can reach your printers, like a home server or a Raspberry Pi.
 
 ```sh
-git clone https://github.com/<you>/printpeek.git
-cd printpeek
+git clone https://github.com/jancoow/PrintPeek.git
+cd PrintPeek
 cp config/config.example.yaml config/config.yaml
-# edit config/config.yaml: add your printers and set a username/password
+nano config/config.yaml          # add your printers and pick a username and password
 docker compose up -d --build
 ```
 
-Then open `http://<server>:9022`.
+Open `http://<server>:9022` and you'll see your printers.
 
-Moonraker has to accept requests from the server. Add the server's IP to `trusted_clients` in
-`moonraker.conf`, or set `api_key` for the printer in the config.
+The only printer-side requirement is that Moonraker accepts requests from the server. Add the
+server's IP to `trusted_clients` in `moonraker.conf`, or set an `api_key` for the printer in the
+config.
 
-The camera is picked up from the webcam settings in Mainsail/Fluidd. If that doesn't work you
-can set the stream and snapshot URLs yourself, see `config/config.example.yaml`.
-
-### Without Docker
+<details>
+<summary>Running it without Docker</summary>
 
 Needs Python 3.11+ and ffmpeg.
 
@@ -59,65 +95,49 @@ venv/bin/pip install -r requirements.txt
 CONFIG=config/config.yaml DATA_DIR=data venv/bin/uvicorn app.main:app --port 8080
 ```
 
-Without go2rtc, remove the `go2rtc:` line from the config and the app will proxy the camera
-directly.
+Without go2rtc, remove the `go2rtc:` line from the config. The live view is then the camera's
+own MJPEG stream.
+</details>
 
-## On your phone
+## Using it from outside your home
 
-Open the site on your phone and choose "Add to Home Screen" (Safari) or "Install app" (Chrome).
-This needs HTTPS, so it works through your reverse proxy but not on a plain `http://` address.
+Put PrintPeek behind a reverse proxy with HTTPS (Nginx Proxy Manager, Caddy, Cloudflare Tunnel)
+and make sure `auth` is set in the config. Only expose port 9022.
 
-To get notifications, log in and tap "Notifications off" at the top. You get one when a print
-finishes, pauses (with the reason) or fails, and when a printer goes offline during a print. On
-an iPhone this only works from the home screen app (iOS 16.4 or newer).
+- Turn on WebSocket support in the proxy ("Websockets Support" in Nginx Proxy Manager). The H.264
+  live view needs it; without it viewers get the MJPEG stream.
+- HTTPS is also what makes "Add to Home Screen" and notifications work.
+- Never expose go2rtc's port 1984. Its API can run commands, which is why the compose file keeps it
+  inside the stack.
 
-## Live view
+Without logging in, visitors only see the printers you made public and the timelapses you shared.
+Why a print paused, and the photo of it, are only shown when you're logged in.
 
-With go2rtc running, the live view is H.264 at 720p and at most 1.5 Mbit/s: a 1080p MJPEG camera
-easily uses 12 Mbit/s. go2rtc only converts while someone is watching, which takes about a fifth
-of a CPU core per camera. Browsers that can't play it (iOS before 17.1) get the MJPEG stream.
+## Notifications
 
-The settings are the `h264live` preset in `go2rtc/go2rtc.yaml`. With a GPU, set
-`h264_options: "#video=h264#hardware"` in the config. To turn H.264 off for one camera, set
-`h264: false` under its `camera:`.
+Log in, tap the bell at the top and allow notifications. A test notification arrives right away.
+On an iPhone, first add PrintPeek to your home screen and open it from there (iOS 16.4 or newer).
 
-## Why did it pause?
+## Tips
 
-Klipper doesn't keep track of why a print paused, so the app looks in a few places when it
-happens: the printer's own error report (Snapmaker printers report their spaghetti detection
-this way), the filament sensors, the G-code right before the pause, and the console. If none of
-them says anything, it was most likely paused by hand from the screen, Mainsail or an app.
-
-The reason and the photo are only shown when you're logged in.
-
-## Layer detection
-
-For exact layer changes, add this to the layer change G-code in your slicer (PrusaSlicer,
-OrcaSlicer, SuperSlicer):
+**Exact layers.** Layer changes are estimated from the Z height, which works fine. For exact
+layers, add this to the layer change G-code in your slicer (PrusaSlicer, OrcaSlicer, SuperSlicer):
 
 ```
 SET_PRINT_STATS_INFO CURRENT_LAYER={layer_num + 1}
 ```
 
-If you already have a layer counter in Mainsail you probably have this. Without it the layer is
-estimated from the Z height, which works fine too.
+**Last frame.** If your printer moves the bed away at the end of a print, PrintPeek notices and
+ends the video on the last layer instead. You can force either behaviour with
+`final_frame: before_end` or `after_end` per printer.
 
-Some printers (like the U1) drop the bed at the end of a print, so the last frame would show an
-empty chamber. The app notices this and ends the video on the last layer instead. You can force
-it with `final_frame: before_end` or `after_end` per printer.
+**Live view quality.** The H.264 settings are the `h264live` preset in `go2rtc/go2rtc.yaml`: 720p
+at up to 1.5 Mbit/s, converted only while someone watches (about a fifth of a CPU core per
+camera). With a GPU, set `h264_options: "#video=h264#hardware"` in the config. To always use
+MJPEG for one camera, set `h264: false` under its `camera:`. Browsers that can't play H.264
+streams (iOS before 17.1) get MJPEG automatically.
 
-## Putting it online
-
-If you want to reach it from outside, put it behind a reverse proxy with HTTPS (Nginx Proxy
-Manager, Caddy, Cloudflare Tunnel) and make sure `auth` is set in the config. Only expose port
-9022. The H.264 live view uses a WebSocket, so turn on WebSocket support in the proxy ("Websockets
-Support" in Nginx Proxy Manager). Without it, viewers get the MJPEG stream.
-
-Without logging in, people only see the printers you made public and the timelapses you shared.
-The app never sends commands to the printers, it only reads status and camera images.
-
-Don't expose go2rtc's API port (1984). It can be used to run commands, which is why the compose
-file doesn't publish it.
+All settings are explained in [`config/config.example.yaml`](config/config.example.yaml).
 
 ## License
 
