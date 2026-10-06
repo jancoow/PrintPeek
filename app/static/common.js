@@ -69,3 +69,8 @@ async function copyText(text) {
     prompt("Copy this link:", text);
   }
 }
+
+// Installable as an app on phones (see /sw.js)
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/sw.js").catch((e) => console.warn("service worker", e));
+}

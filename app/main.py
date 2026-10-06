@@ -150,6 +150,18 @@ async def watch(printer_id: str):
     return FileResponse(STATIC / "watch.html")  # the page itself says when it isn't live
 
 
+# The app can be installed on a phone's home screen (PWA). The service worker has to be served
+# from the root to cover the whole site.
+@app.get("/manifest.webmanifest", include_in_schema=False)
+async def manifest():
+    return FileResponse(STATIC / "manifest.webmanifest", media_type="application/manifest+json")
+
+
+@app.get("/sw.js", include_in_schema=False)
+async def service_worker():
+    return FileResponse(STATIC / "sw.js", media_type="text/javascript", headers={"Cache-Control": "no-cache"})
+
+
 @app.get("/share/{token}", include_in_schema=False)
 async def share_page(token: str):
     _shared(token)
