@@ -25,7 +25,30 @@ There's no timelapse plugin on the printer and nothing to change in your slicer.
 
 ![Timelapse library](docs/timelapses.png)
 
-![Playing and sharing a timelapse](docs/player.jpg)
+## Share it your way
+
+You decide, per printer, who gets to watch:
+
+- **Private.** Only you, after logging in.
+- **Public.** Anyone with the link can watch the live camera and progress.
+- **Public for a while.** For 1, 3 or 8 hours, then it switches back to private by itself.
+- **Public until this print is done.** Perfect for showing off one print. When it finishes,
+  the printer goes private again.
+
+Send friends a `/watch/<printer>` link for a full screen view that works on any phone. The moment
+you switch a printer to private, everyone watching is cut off.
+
+Timelapses stay private too. Share a single video with a link of its own, and take it back with
+"Stop sharing" whenever you like.
+
+| | Visitors | You (logged in) |
+|---|:---:|:---:|
+| Live view of public printers | ✔ | ✔ |
+| Live view of private printers | | ✔ |
+| A timelapse you shared | ✔ | ✔ |
+| All timelapses: watch, download, delete | | ✔ |
+| Why a print paused, and the photo of it | | ✔ |
+| Notifications and sharing settings | | ✔ |
 
 ## In your pocket
 
@@ -50,8 +73,6 @@ There's no timelapse plugin on the printer and nothing to change in your slicer.
   sensors, the G-code and the console.
 - **Multiple toolheads.** Each tool's temperature and filament colour, and a warning when the
   filament that's loaded doesn't match what the print was sliced for.
-- **Let friends watch.** Make a printer public for an hour, an evening or until the print is done,
-  and send a `/watch` link. Switching it back to private cuts everyone off right away.
 - **Easy on the printer.** [go2rtc](https://github.com/AlexxIT/go2rtc) pulls each camera once, no
   matter how many people are watching.
 - **Looks, doesn't touch.** PrintPeek never sends a command to a printer. It only reads status and
@@ -110,8 +131,8 @@ and make sure `auth` is set in the config. Only expose port 9022.
 - Never expose go2rtc's port 1984. Its API can run commands, which is why the compose file keeps it
   inside the stack.
 
-Without logging in, visitors only see the printers you made public and the timelapses you shared.
-Why a print paused, and the photo of it, are only shown when you're logged in.
+Without logging in, visitors only see the printers you made public and the timelapses you shared
+(see [Share it your way](#share-it-your-way)).
 
 ## Notifications
 
