@@ -118,3 +118,10 @@ The app never sends commands to the printers, it only reads status and camera im
 
 Don't expose go2rtc's API port (1984). It can be used to run commands, which is why the compose
 file doesn't publish it.
+
+## License
+
+PrintPeek is free software under the [GNU AGPL v3](LICENSE): use it, change it and share it.
+If you run a changed version for other people, share your changes under the same license too.
+
+Copyright (C) 2026 Janco Kock
