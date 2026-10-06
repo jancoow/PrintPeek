@@ -89,7 +89,7 @@ h3 { font-size: 16px; margin: 0; }
 .head { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
 .head .titles { flex: 1; min-width: 0; }
 .head .file { margin-bottom: 0; }
-.thumb {
+.preview {
   width: 48px; height: 48px; flex: none; object-fit: contain; border-radius: 8px;
   background: var(--surface-2); border: 1px solid var(--border);
 }
@@ -194,4 +194,5 @@ dialog video { width: 100%; display: block; background: #000; max-height: 70vh; 
 
 @media (max-width: 520px) {
   .stats { grid-template-columns: repeat(2, 1fr); }
+  #notify .label { display: none; } /* just the bell on phones; the title says what it does */
 }

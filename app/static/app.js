@@ -43,7 +43,7 @@ function updateCard(p) {
   q(".cam img").style.transform = q(".cam video").style.transform = camTransform(p.camera);
   q(".nocam").hidden = p.camera.available;
   q(".badge:not(.visibility)").hidden = !p.recording;
-  q(".frames").textContent = p.frames ? `· ${p.frames} frames` : "";
+  q(".frames").textContent = p.frames ? `· ${p.frames} ${p.frames === 1 ? "frame" : "frames"}` : "";
 
   const state = q(".state");
   state.className = `state ${p.state || ""}`;
@@ -58,7 +58,7 @@ function updateCard(p) {
   q(".eta").textContent = active ? fmtDuration(p.eta) : "–";
   q(".finish").hidden = !(p.state === "printing" && p.finish_at);
   q(".finish").textContent = `done at ${fmtFinish(p.finish_at)}`;
-  setImage(q(".thumb"), active ? thumbUrl(p) : "");
+  setImage(q(".preview"), active ? thumbUrl(p) : "");
   q(".nozzle").textContent = (p.extruder.tool ? `${p.extruder.tool} ` : "") + fmtTemp(p.extruder);
   q(".bed").textContent = fmtTemp(p.bed);
   updateEvent(q, p);
@@ -188,7 +188,11 @@ async function refreshNotify(resync = false) {
   if (!admin) return;
   const sub = await pushSubscription().catch(() => undefined);
   notifyButton.dataset.state = sub === undefined ? "unsupported" : sub ? "on" : "off";
-  notifyButton.textContent = sub ? "🔔 Notifications on" : "🔕 Notifications off";
+  const label = document.createElement("span");
+  label.className = "label";
+  label.textContent = sub ? " Notifications on" : " Notifications off";
+  notifyButton.replaceChildren(sub ? "🔔" : "🔕", label);
+  notifyButton.setAttribute("aria-label", label.textContent.trim());
   notifyButton.title = sub ? "This device gets a notification when a print finishes, pauses or fails" : "Get a notification when a print finishes, pauses or fails";
   if (sub && resync) saveSubscription(sub).catch((e) => console.warn(e));
 }
@@ -250,7 +254,7 @@ function renderFilters() {
 
 function statusText(t) {
   switch (t.status) {
-    case "recording": return `Recording · ${t.frames} frames`;
+    case "recording": return `Recording · ${t.frames} ${t.frames === 1 ? "frame" : "frames"}`;
     case "queued": return "Waiting to render";
     case "rendering": return "Rendering…";
     case "failed": return "Render failed";
