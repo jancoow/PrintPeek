@@ -127,7 +127,7 @@ async def lifespan(_app: FastAPI):
     await _app.state.stream_client.aclose()
 
 
-app = FastAPI(title="3D print", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
+app = FastAPI(title="PrintPeek", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 app.add_middleware(AdminSession)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 app.mount("/media", StaticFiles(directory=MEDIA), name="media")

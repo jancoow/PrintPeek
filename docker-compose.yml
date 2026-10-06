@@ -1,11 +1,11 @@
-# Printer dashboard, camera re-streams and timelapses.
-name: printer-monitor
+# PrintPeek: Peek at your prints, from anywhere.
+name: printpeek
 
 services:
   app:
     build: .
-    image: printer-monitor:latest
-    container_name: printer-monitor
+    image: printpeek:latest
+    container_name: printpeek
     restart: unless-stopped
     depends_on: [go2rtc]
     ports:
@@ -21,7 +21,7 @@ services:
   # so it's deliberately not published.
   go2rtc:
     image: alexxit/go2rtc:latest
-    container_name: printer-monitor-go2rtc
+    container_name: printpeek-go2rtc
     restart: unless-stopped
     ports:
       - "9023:8554"   # RTSP for LAN players: rtsp://<server>:9023/<printer id>

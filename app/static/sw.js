@@ -2,7 +2,7 @@
 // and shows push notifications.
 // Only page loads and /static/ files go through here, always from the network first. The API,
 // camera streams and videos are never touched or cached.
-const CACHE = "printer-monitor-v1";
+const CACHE = "printpeek-v1";
 const OFFLINE = "/static/offline.html";
 
 self.addEventListener("install", (event) => {
@@ -33,7 +33,7 @@ self.addEventListener("fetch", (event) => {
 
 self.addEventListener("push", (event) => {
   const msg = event.data ? event.data.json() : {};
-  event.waitUntil(self.registration.showNotification(msg.title || "Printer monitor", {
+  event.waitUntil(self.registration.showNotification(msg.title || "PrintPeek", {
     body: msg.body || "",
     tag: msg.tag || undefined,
     renotify: Boolean(msg.tag), // a newer message about the same printer replaces the old one, and still buzzes

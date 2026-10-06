@@ -1,4 +1,4 @@
-# The printer monitor registers each printer's camera here automatically (by printer id), plus
+# PrintPeek registers each printer's camera here automatically (by printer id), plus
 # an H.264 version of it (<id>_h264) that uses a fraction of the bandwidth of MJPEG.
 # You can also add streams by hand, e.g.:
 # streams:

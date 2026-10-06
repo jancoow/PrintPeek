@@ -1,7 +1,7 @@
 {
-  "name": "Printer monitor",
-  "short_name": "Printers",
-  "description": "Live camera, progress and timelapses of my 3D printers",
+  "name": "PrintPeek",
+  "short_name": "PrintPeek",
+  "description": "Peek at your prints, from anywhere. Live camera, progress and timelapses of your 3D printers.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

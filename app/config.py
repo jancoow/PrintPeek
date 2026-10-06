@@ -104,5 +104,5 @@ def load_config(path: str | os.PathLike) -> Config:
         max_viewers=int(raw.get("max_viewers", 10)),
         auth=AuthConfig(**auth) if auth else None,
         h264_options=h264_options,
-        push_contact=str(raw.get("push_contact") or "mailto:printer-monitor@example.com"),
+        push_contact=str(raw.get("push_contact") or "mailto:printpeek@example.com"),
     )

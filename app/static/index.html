@@ -3,19 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>3D Print</title>
+  <title>PrintPeek</title>
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
   <link rel="icon" href="/static/icons/favicon-32.png" sizes="32x32" type="image/png">
   <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
-  <meta name="apple-mobile-web-app-title" content="Printers">
+  <meta name="apple-mobile-web-app-title" content="PrintPeek">
   <meta name="theme-color" content="#f4f5f7" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0f1115" media="(prefers-color-scheme: dark)">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <header class="top">
-    <h1>3D Print</h1>
+    <div class="brand">
+      <h1>PrintPeek</h1>
+      <p class="tagline">Peek at your prints, from anywhere.</p>
+    </div>
     <div class="top-actions">
       <button id="notify" hidden></button>
       <a id="login" href="/login" hidden>Log in</a>

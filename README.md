@@ -1,4 +1,6 @@
-# Printer monitor
+# PrintPeek
+
+**Peek at your prints, from anywhere.**
 
 A small web app that shows all my Klipper printers on one page, with the live camera, and
 records a timelapse of every print. It runs on a home server in Docker and only talks to
@@ -32,8 +34,8 @@ Moonraker (Mainsail or Fluidd).
 You need Docker with Compose.
 
 ```sh
-git clone https://github.com/<you>/printer-monitor.git
-cd printer-monitor
+git clone https://github.com/<you>/printpeek.git
+cd printpeek
 cp config/config.example.yaml config/config.yaml
 # edit config/config.yaml: add your printers and set a username/password
 docker compose up -d --build

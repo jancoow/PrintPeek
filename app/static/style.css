@@ -51,6 +51,7 @@ header.top {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
 }
 h1 { font-size: 22px; margin: 0; }
+.tagline { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
 .top-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 h2 { font-size: 17px; margin: 0; }
 h3 { font-size: 16px; margin: 0; }
