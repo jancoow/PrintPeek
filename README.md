@@ -24,10 +24,6 @@ There's no timelapse plugin on the printer and nothing to change in your slicer.
 - Browse them per printer as big thumbnails or a compact list with print time and filament used
 - Download them, or share one video with a private link
 
-![Timelapse library](docs/timelapses.png)
-
-Prefer it compact? Switch to the list view. PrintPeek remembers your choice on each device.
-
 ![Timelapses as a list](docs/timelapse-list.png)
 
 ## Share it your way
