@@ -26,6 +26,7 @@
     .info .label { color: #8d95a3; }
     .info .bar { flex: 1 1 120px; background: #2a2f38; }
     .info .bar .fill { background: #5b8dff; }
+    .info .thumb { width: 36px; height: 36px; background: #20242c; border-color: #2a2f38; }
   </style>
 </head>
 <body>
@@ -34,6 +35,7 @@
     <p id="offair" class="offair" hidden>This printer isn't live right now. This page will pick it up when it is.</p>
   </div>
   <div class="info" id="info" hidden>
+    <img class="thumb" id="thumb" alt="" hidden>
     <span class="name" id="name"></span>
     <span id="state"></span>
     <span id="file" class="label"></span>
@@ -41,6 +43,7 @@
     <span id="progress"></span>
     <span><span class="label">Layer</span> <span id="layer">–</span></span>
     <span><span class="label">Remaining</span> <span id="eta">–</span></span>
+    <span id="finish-box" hidden><span class="label">Done at</span> <span id="finish"></span></span>
   </div>
   <script src="/static/common.js"></script>
   <script>

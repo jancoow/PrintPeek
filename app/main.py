@@ -241,6 +241,14 @@ async def snapshot(printer_id: str, request: Request):
     return Response(frame, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
 
 
+@app.get("/api/printers/{printer_id}/thumbnail.png")
+async def thumbnail(printer_id: str, request: Request):
+    image = await _viewable(printer_id, request).thumbnail()
+    if image is None:
+        raise HTTPException(404, "no preview")
+    return Response(image, media_type="image/png", headers={"Cache-Control": "private, max-age=600"})
+
+
 @app.get("/api/printers/{printer_id}/stream.mjpeg")
 async def stream(printer_id: str, request: Request):
     """MJPEG re-stream. go2rtc keeps a single connection to the printer however many people watch."""

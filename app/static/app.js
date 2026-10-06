@@ -56,6 +56,9 @@ function updateCard(p) {
   q(".layer").textContent = p.layer ? `${p.layer}${p.total_layers ? " / " + p.total_layers : ""}` : "–";
   q(".elapsed").textContent = active ? fmtDuration(p.print_duration) : "–";
   q(".eta").textContent = active ? fmtDuration(p.eta) : "–";
+  q(".finish").hidden = !(p.state === "printing" && p.finish_at);
+  q(".finish").textContent = `done at ${fmtFinish(p.finish_at)}`;
+  setImage(q(".thumb"), active ? thumbUrl(p) : "");
   q(".nozzle").textContent = (p.extruder.tool ? `${p.extruder.tool} ` : "") + fmtTemp(p.extruder);
   q(".bed").textContent = fmtTemp(p.bed);
   updateEvent(q, p);

@@ -84,6 +84,13 @@ h3 { font-size: 16px; margin: 0; }
 .badge.visibility.live { background: rgba(20, 120, 60, .85); }
 
 .body { padding: 14px 16px 16px; }
+.head { display: flex; gap: 12px; align-items: center; margin-bottom: 10px; }
+.head .titles { flex: 1; min-width: 0; }
+.head .file { margin-bottom: 0; }
+.thumb {
+  width: 48px; height: 48px; flex: none; object-fit: contain; border-radius: 8px;
+  background: var(--surface-2); border: 1px solid var(--border);
+}
 .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .state {
   font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
@@ -113,6 +120,7 @@ h3 { font-size: 16px; margin: 0; }
 }
 .stats dt { font-size: 12px; color: var(--muted); }
 .stats dd { margin: 0; font-variant-numeric: tabular-nums; font-weight: 500; }
+.stats dd.finish { font-size: 12px; font-weight: 400; color: var(--muted); }
 .tools { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
 .tool {
   display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-variant-numeric: tabular-nums;

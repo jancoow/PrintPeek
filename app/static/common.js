@@ -19,6 +19,28 @@ function fmtClock(epochSeconds) {
   return new Date(epochSeconds * 1000).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
+// "14:35", or "tomorrow 08:10" / "Thu 08:10" when it's not today
+function fmtFinish(epochSeconds) {
+  if (epochSeconds == null) return "";
+  const d = new Date(epochSeconds * 1000);
+  const days = Math.round((new Date(d).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000);
+  const time = fmtClock(epochSeconds);
+  if (days === 0) return time;
+  if (days === 1) return `tomorrow ${time}`;
+  return `${d.toLocaleDateString(undefined, { weekday: "short" })} ${time}`;
+}
+
+function thumbUrl(p) {
+  return p.thumbnail ? `/api/printers/${p.id}/thumbnail.png?f=${encodeURIComponent(p.filename || "")}` : "";
+}
+
+// Sets an <img>'s src only when it changes, and hides it without one
+function setImage(img, url) {
+  img.hidden = !url;
+  if (url && img.getAttribute("src") !== url) img.src = url;
+  if (!url) img.removeAttribute("src");
+}
+
 function camTransform(cam) {
   const t = [];
   if (cam.rotation) t.push(`rotate(${cam.rotation}deg)`);

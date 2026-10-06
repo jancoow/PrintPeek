@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
+import posixpath
 import re
 import time
 from urllib.parse import quote, urljoin, urlsplit
@@ -71,6 +72,7 @@ class PrinterMonitor:
         self.viewers = 0
         self._snapshot: tuple[float, bytes] | None = None
         self._snapshot_lock = asyncio.Lock()
+        self._thumbnail: tuple[str, bytes | None] | None = None  # (gcode file, its slicer preview)
         self.objects: list[str] | None = None  # what to query, listed from Klipper on every (re)connect
         self.tools = ["extruder"]
         self.sensors: list[str] = []
@@ -228,6 +230,27 @@ class PrinterMonitor:
             except httpx.HTTPError:
                 pass
         return None
+
+    async def thumbnail(self) -> bytes | None:
+        """The slicer's preview image of the file being printed (the largest one, at most 400 px)."""
+        filename = self.raw.get("print_stats", {}).get("filename")
+        if not filename or self._metadata_for != filename:
+            return None
+        if self._thumbnail and self._thumbnail[0] == filename:
+            return self._thumbnail[1]
+        thumbs = [t for t in self.metadata.get("thumbnails") or [] if t.get("relative_path") and (t.get("width") or 0) <= 400]
+        image = None
+        if thumbs:
+            best = max(thumbs, key=lambda t: t.get("width") or 0)
+            path = posixpath.join(posixpath.dirname(filename), best["relative_path"])
+            try:
+                r = await self.client.get(f"{self.cfg.moonraker}/server/files/gcodes/{quote(path)}", headers=self.headers)
+                if r.status_code == 200 and r.content[:8] == b"\x89PNG\r\n\x1a\n":
+                    image = r.content
+            except httpx.HTTPError:
+                return None  # try again next time
+        self._thumbnail = (filename, image)
+        return image
 
     # -- print job tracking ------------------------------------------------
 
@@ -498,6 +521,8 @@ class PrinterMonitor:
             "progress": progress,
             "print_duration": duration,
             "eta": eta,
+            "finish_at": time.time() + eta if eta is not None else None,
+            "thumbnail": bool(active and self.metadata.get("thumbnails")),
             "layer": layer[0] if layer else None,
             "total_layers": self._total_layers(ps) if active else None,
             "extruder": {
