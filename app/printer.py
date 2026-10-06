@@ -12,6 +12,7 @@ import math
 import posixpath
 import re
 import time
+from collections.abc import Awaitable, Callable
 from urllib.parse import quote, urljoin, urlsplit
 
 import httpx
@@ -40,14 +41,20 @@ REASON_DELAY = 3.0  # seconds after a pause before looking for its reason, so th
 REASON_WINDOW = 120.0  # seconds before the pause that a reported error or console message counts
 GCODE_TAIL = 4096  # bytes of the gcode file before the pause point to look for a pause command
 LOG_TAIL = 65536  # bytes of moonraker.log to look for a Snapmaker error report
+OFFLINE_ALERT = 120.0  # seconds without contact during a print before a notification goes out
 
 
 class PrinterMonitor:
-    def __init__(self, cfg: PrinterConfig, app: Config, client: httpx.AsyncClient, public: PublicSwitch):
+    def __init__(self, cfg: PrinterConfig, app: Config, client: httpx.AsyncClient, public: PublicSwitch,
+                 notify: Callable[..., Awaitable[None]] | None = None):
         self.cfg = cfg
         self.app = app
         self.client = client
         self.public = public
+        self.notify = notify  # Push.notify
+        self._push_tasks: set[asyncio.Task] = set()
+        self._offline_since: float | None = None
+        self._offline_notified = False
         self.headers = {"X-Api-Key": cfg.api_key} if cfg.api_key else {}
         self.state_file = app.data_dir / "state" / f"{cfg.id}.json"
 
@@ -101,6 +108,9 @@ class PrinterMonitor:
         while True:
             try:
                 await self._tick()
+                if self._offline_notified:
+                    self._notify("is back online")
+                self._offline_since, self._offline_notified = None, False
             except asyncio.CancelledError:
                 raise
             except Exception as e:  # printer off, network hiccup, klippy restarting...
@@ -110,6 +120,10 @@ class PrinterMonitor:
                 self.online = False
                 self.error = message
                 self.objects = None
+                self._offline_since = self._offline_since or time.monotonic()
+                if self.job and not self._offline_notified and time.monotonic() - self._offline_since >= OFFLINE_ALERT:
+                    self._offline_notified = True
+                    self._notify("is offline", f"No contact for {OFFLINE_ALERT / 60:.0f} minutes while printing {_file(self.job.filename)}")
             await asyncio.sleep(self.app.poll_interval)
 
     async def _tick(self) -> None:
@@ -319,6 +333,7 @@ class PrinterMonitor:
 
     async def _finish(self, result: str) -> None:
         job, self.job = self.job, None
+        frame = None
         if result == "complete":
             # The end G-code has run by now: usually this shows the parked head and the finished print.
             frame = await self.snapshot()
@@ -331,6 +346,20 @@ class PrinterMonitor:
         self.state_file.unlink(missing_ok=True)
         log.info("%s: print %s (%s), %d frames", self.cfg.id, result, job.filename, job.frames)
         timelapse.schedule_render(job.dir, self.app.timelapse)
+        if result == "complete":
+            duration = self.raw.get("print_stats", {}).get("print_duration")
+            self._notify("finished", _file(job.filename) + (f" · {_duration(duration)}" if duration else ""), frame)
+        elif result == "cancelled":
+            self._notify("print was cancelled", _file(job.filename))
+        # errors are announced by _watch_events, with the reason
+
+    def _notify(self, what: str, body: str = "", photo: bytes | None = None) -> None:
+        """Push notification, sent in the background so a slow push service never holds up polling."""
+        if self.notify is None:
+            return
+        task = asyncio.create_task(self.notify(f"{self.cfg.name} {what}", body, tag=f"printer-{self.cfg.id}", photo=photo))
+        self._push_tasks.add(task)
+        task.add_done_callback(self._push_tasks.discard)
 
     def _z(self) -> float | None:
         pos = self.raw.get("gcode_move", {}).get("gcode_position")
@@ -401,6 +430,9 @@ class PrinterMonitor:
             self._event_due = None
             self.event["reason"] = await self._find_reason(state)
             log.info("%s: print %s: %s", self.cfg.id, state, self.event["reason"]["text"])
+            if self.event["at"] is not None:  # seen as it happened, not found like this at startup
+                what = "paused" if state == "paused" else "stopped with an error"
+                self._notify(what, self.event["reason"]["text"], self.event_photo)
 
     async def _find_reason(self, state: str) -> dict:
         ps = self.raw.get("print_stats", {})
@@ -590,6 +622,16 @@ class PrinterMonitor:
 
 
 HEX_COLOR = re.compile(r"#?([0-9A-Fa-f]{6})")
+
+
+def _file(path: str) -> str:
+    """'models/Benchy_PLA_1h2m.gcode' -> 'Benchy_PLA_1h2m'"""
+    return re.sub(r"\.gcode$", "", posixpath.basename(path or ""), flags=re.I) or "the print"
+
+
+def _duration(seconds: float) -> str:
+    minutes = round(seconds / 60)
+    return f"{minutes // 60}h {minutes % 60:02d}m" if minutes >= 60 else f"{minutes}m"
 
 
 def _at(values, i: int):

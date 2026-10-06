@@ -2,3 +2,5 @@ fastapi==0.142.*
 uvicorn[standard]==0.54.*
 httpx==0.28.*
 PyYAML==6.0.*
+websockets==17.*
+pywebpush==2.5.*

@@ -64,6 +64,8 @@ class Config:
     poll_interval: float
     max_viewers: int  # simultaneous live streams per printer
     auth: AuthConfig | None
+    h264_options: str  # how go2rtc makes the H.264 stream from the camera
+    push_contact: str  # sent along with push notifications, so push services can reach the sender
 
 
 def load_config(path: str | os.PathLike) -> Config:
@@ -101,4 +103,6 @@ def load_config(path: str | os.PathLike) -> Config:
         poll_interval=float(raw.get("poll_interval", 1.0)),
         max_viewers=int(raw.get("max_viewers", 10)),
         auth=AuthConfig(**auth) if auth else None,
+        h264_options=h264_options,
+        push_contact=str(raw.get("push_contact") or "mailto:printer-monitor@example.com"),
     )

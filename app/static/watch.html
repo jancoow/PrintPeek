@@ -55,7 +55,6 @@
 
     function offAir() {
       stream.set(false);
-      $("cam").hidden = true;
       $("info").hidden = true;
       $("offair").hidden = false;
     }
@@ -68,7 +67,6 @@
         const active = p.state === "printing" || p.state === "paused";
         document.title = `${p.name} · Live`;
         $("offair").hidden = true;
-        $("cam").hidden = false;
         $("info").hidden = false;
         $("name").textContent = p.name;
         $("state").textContent = STATE_LABELS[p.state] || p.state;

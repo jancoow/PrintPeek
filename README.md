@@ -8,14 +8,17 @@ Moonraker, so nothing has to be installed on the printers.
 
 What it does:
 
-- Live camera, progress, layer, time left and temperatures per printer
+- Live camera, progress, layer, time left, finish time and temperatures per printer, with the
+  slicer's preview of what's printing
+- Push notifications on your phone when a print finishes, pauses or fails, with a photo
 - When a print pauses or fails, it shows why (filament ran out, a pause in the G-code, the
   printer's own spaghetti detection) with a photo of that moment
 - Printers with several toolheads (like the U1) show each tool's temperature and filament, and
   warn when the loaded filament doesn't match what the print was sliced for
 - Timelapse of every print (one frame per layer), rendered to MP4 with ffmpeg when the print ends
 - Camera re-streaming through [go2rtc](https://github.com/AlexxIT/go2rtc), so the printer only
-  serves one stream no matter how many people are watching
+  serves one stream no matter how many people are watching. The live view is converted to H.264,
+  which needs about a tenth of the bandwidth of the camera's MJPEG stream (nice on mobile data)
 - Make a printer's live view public, for a few hours or until the print is done, and send
   friends a `/watch/<printer>` link
 - Share a single timelapse with a private link
@@ -61,6 +64,20 @@ directly.
 
 Open the site on your phone and choose "Add to Home Screen" (Safari) or "Install app" (Chrome).
 This needs HTTPS, so it works through your reverse proxy but not on a plain `http://` address.
+
+To get notifications, log in and tap "Notifications off" at the top. You get one when a print
+finishes, pauses (with the reason) or fails, and when a printer goes offline during a print. On
+an iPhone this only works from the home screen app (iOS 16.4 or newer).
+
+## Live view
+
+With go2rtc running, the live view is H.264 at 720p and at most 1.5 Mbit/s: a 1080p MJPEG camera
+easily uses 12 Mbit/s. go2rtc only converts while someone is watching, which takes about a fifth
+of a CPU core per camera. Browsers that can't play it (iOS before 17.1) get the MJPEG stream.
+
+The settings are the `h264live` preset in `go2rtc/go2rtc.yaml`. With a GPU, set
+`h264_options: "#video=h264#hardware"` in the config. To turn H.264 off for one camera, set
+`h264: false` under its `camera:`.
 
 ## Why did it pause?
 

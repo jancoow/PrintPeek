@@ -143,7 +143,10 @@ async function refreshStatus() {
     [...cards.keys()].filter((id) => !ids.has(id)).forEach(removeCard);
     printerNames = Object.fromEntries(data.printers.map((p) => [p.id, p.name]));
     data.printers.forEach(updateCard);
-    if (admin && !wasAdmin) refreshTimelapses();
+    if (admin && !wasAdmin) {
+      refreshTimelapses();
+      refreshNotify(true);
+    }
   } catch (e) {
     console.warn("status", e);
   }
@@ -152,6 +155,81 @@ async function refreshStatus() {
 document.getElementById("logout").onclick = async () => {
   await fetch("/api/logout", { method: "POST" });
   location.reload();
+};
+
+// -- push notifications (admin) --------------------------------------------------
+
+const notifyButton = document.getElementById("notify");
+
+async function pushSubscription() {
+  if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return undefined;
+  return (await navigator.serviceWorker.ready).pushManager.getSubscription();
+}
+
+function deviceLabel() {
+  const ua = navigator.userAgent;
+  const device = /iPhone|iPad/.test(ua) ? (ua.match(/iPhone|iPad/)[0]) : /Android/.test(ua) ? "Android"
+    : /Mac/.test(ua) ? "Mac" : /Windows/.test(ua) ? "Windows" : "Linux";
+  const browser = /Edg\//.test(ua) ? "Edge" : /Firefox\//.test(ua) ? "Firefox" : /Chrome\//.test(ua) ? "Chrome" : "Safari";
+  return `${device} · ${browser}`;
+}
+
+async function saveSubscription(sub) {
+  const r = await fetch("/api/admin/push/subscribe", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ subscription: sub.toJSON(), label: deviceLabel() }),
+  });
+  if (!r.ok) throw new Error(`subscribe: HTTP ${r.status}`);
+}
+
+// resync: tells the server about this device's subscription again, in case it lost track of it
+async function refreshNotify(resync = false) {
+  notifyButton.hidden = !admin;
+  if (!admin) return;
+  const sub = await pushSubscription().catch(() => undefined);
+  notifyButton.dataset.state = sub === undefined ? "unsupported" : sub ? "on" : "off";
+  notifyButton.textContent = sub ? "🔔 Notifications on" : "🔕 Notifications off";
+  notifyButton.title = sub ? "This device gets a notification when a print finishes, pauses or fails" : "Get a notification when a print finishes, pauses or fails";
+  if (sub && resync) saveSubscription(sub).catch((e) => console.warn(e));
+}
+
+function base64UrlBytes(text) {
+  const b64 = (text + "=".repeat((4 - (text.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/");
+  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+}
+
+notifyButton.onclick = async () => {
+  const state = notifyButton.dataset.state;
+  try {
+    if (state === "unsupported") {
+      const iPhone = /iPhone|iPad/.test(navigator.userAgent) && !navigator.standalone;
+      toast(iPhone ? "On iPhone, first add this site to your home screen (Share → Add to Home Screen) and open it from there"
+                   : "This browser can't show notifications");
+    } else if (state === "on") {
+      if (!confirm("Turn off notifications on this device?")) return;
+      const sub = await pushSubscription();
+      await fetch("/api/admin/push/unsubscribe", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint: sub.endpoint }),
+      });
+      await sub.unsubscribe();
+      toast("Notifications off");
+    } else {
+      if (await Notification.requestPermission() !== "granted") return toast("Notifications are blocked for this site in your browser settings");
+      const { key } = await (await fetch("/api/admin/push")).json();
+      const reg = await navigator.serviceWorker.ready;
+      await (await reg.pushManager.getSubscription())?.unsubscribe(); // made with an old server key, perhaps
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlBytes(key) });
+      await saveSubscription(sub);
+      await fetch("/api/admin/push/test", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint: sub.endpoint }),
+      });
+      toast("Notifications on, a test is on its way");
+    }
+  } catch (e) {
+    console.warn("notifications", e);
+    toast("Couldn't change notifications: " + (e.message || e));
+  }
+  refreshNotify();
 };
 
 // -- timelapses (admin) --------------------------------------------------------

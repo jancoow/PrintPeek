@@ -43,3 +43,6 @@ max_viewers: 10        # simultaneous live viewers per printer
 # auth:
 #   username: admin
 #   password: change-me
+
+# Push services (Apple, Google, Mozilla) like to know who sends the notifications.
+# push_contact: mailto:you@example.com

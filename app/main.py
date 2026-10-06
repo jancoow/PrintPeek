@@ -30,6 +30,7 @@ from . import timelapse
 from .access import PublicStore
 from .config import load_config
 from .printer import PrinterMonitor
+from .push import Push
 
 logging.basicConfig(level=os.environ.get("LOG_LEVEL", "INFO"), format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -48,6 +49,7 @@ SESSION_SECONDS = 30 * 24 * 3600
 ADMIN_PREFIXES = ("/media/", "/api/timelapses", "/api/admin/")
 
 public = PublicStore(CONFIG.data_dir / "public.json", {p.id: p.public for p in CONFIG.printers})
+push = Push(CONFIG.data_dir, CONFIG.push_contact)
 monitors: dict[str, PrinterMonitor] = {}
 
 
@@ -97,7 +99,7 @@ class AdminSession:
             return await self.app(scope, receive, send)
         admin = CONFIG.auth is None or self._has_session(scope)
         scope.setdefault("state", {})["admin"] = admin
-        if not admin and scope["path"].startswith(ADMIN_PREFIXES):
+        if scope["type"] == "http" and not admin and scope["path"].startswith(ADMIN_PREFIXES):
             return await JSONResponse({"detail": "login required"}, status_code=401)(scope, receive, send)
         return await self.app(scope, receive, send)
 
@@ -113,7 +115,7 @@ async def lifespan(_app: FastAPI):
     client = httpx.AsyncClient(timeout=10)
     _app.state.stream_client = httpx.AsyncClient(timeout=httpx.Timeout(10, read=30))
     for printer in CONFIG.printers:
-        monitors[printer.id] = PrinterMonitor(printer, CONFIG, client, public[printer.id])
+        monitors[printer.id] = PrinterMonitor(printer, CONFIG, client, public[printer.id], push.notify)
     tasks = [asyncio.create_task(m.run()) for m in monitors.values()]
     timelapse.resume_pending_renders(CONFIG.data_dir, CONFIG.timelapse)
     if CONFIG.auth is None:
@@ -365,6 +367,60 @@ async def set_public(printer_id: str, body: PublicUpdate):
     switch.set(body.mode, body.hours)
     log.info("%s: live view %s", printer_id, switch.describe())
     return switch.describe()
+
+
+# -- push notifications ------------------------------------------------------
+
+class PushKeys(BaseModel):
+    p256dh: str = Field(max_length=200)
+    auth: str = Field(max_length=100)
+
+
+class PushSubscription(BaseModel):
+    endpoint: str = Field(max_length=1000, pattern=r"^https://")
+    keys: PushKeys
+
+
+class PushSubscribe(BaseModel):
+    subscription: PushSubscription
+    label: str = Field(default="", max_length=100)
+
+
+class PushEndpoint(BaseModel):
+    endpoint: str = Field(max_length=1000)
+
+
+@app.get("/api/admin/push")
+async def push_info():
+    return {"key": push.public_key, "devices": [s.get("label") or "?" for s in push.subscriptions]}
+
+
+@app.post("/api/admin/push/subscribe")
+async def push_subscribe(body: PushSubscribe):
+    push.add(body.subscription.model_dump(), body.label)
+    return {"ok": True}
+
+
+@app.post("/api/admin/push/unsubscribe")
+async def push_unsubscribe(body: PushEndpoint):
+    push.remove(body.endpoint)
+    return {"ok": True}
+
+
+@app.post("/api/admin/push/test")
+async def push_test(body: PushEndpoint):
+    await push.notify("Notifications are on", "You'll hear from your printers when a print finishes, pauses or fails.",
+                      tag="test", only=body.endpoint)
+    return {"ok": True}
+
+
+@app.get("/api/push/photos/{token}.jpg")
+async def push_photo(token: str):
+    """The photo in a notification: fetched by the phone's notification system, which has no login."""
+    photo = push.photo(token)
+    if photo is None:
+        raise HTTPException(404)
+    return Response(photo, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=86400"})
 
 
 # -- timelapses (admin) -----------------------------------------------------
