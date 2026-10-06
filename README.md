@@ -21,9 +21,14 @@ There's no timelapse plugin on the printer and nothing to change in your slicer.
 - Heating, homing and bed probing are left out
 - The video ends on the finished print, even on printers that drop the bed at the end
 - A restart in the middle of a print picks up the same timelapse
-- Browse them per printer, download them, or share one video with a private link
+- Browse them per printer as big thumbnails or a compact list with print time and filament used
+- Download them, or share one video with a private link
 
 ![Timelapse library](docs/timelapses.png)
+
+Prefer it compact? Switch to the list view. PrintPeek remembers your choice on each device.
+
+![Timelapses as a list](docs/timelapse-list.png)
 
 ## Share it your way
 
