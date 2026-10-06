@@ -61,8 +61,8 @@ Timelapses stay private too. Share a single video with a link of its own, and ta
 - **Install it like an app.** Add it to your home screen and it opens full screen, with its own icon.
 - **Push notifications.** Your phone buzzes when a print finishes, pauses or fails, with a photo
   of that moment. Also when a printer drops off the network in the middle of a print.
-- **Light on mobile data.** The live view is converted to H.264 at about 1.5 Mbit/s, where a
-  typical MJPEG printer camera uses 10 Mbit/s or more.
+- **Light on mobile data.** The live view is converted to H.264: about 3 Mbit/s for a 1080p
+  camera, a quarter of what the same camera's MJPEG stream uses, in full resolution.
 
 ## Everything else
 
@@ -152,11 +152,13 @@ SET_PRINT_STATS_INFO CURRENT_LAYER={layer_num + 1}
 ends the video on the last layer instead. You can force either behaviour with
 `final_frame: before_end` or `after_end` per printer.
 
-**Live view quality.** The H.264 settings are the `h264live` preset in `go2rtc/go2rtc.yaml`: 720p
-at up to 1.5 Mbit/s, converted only while someone watches (about a fifth of a CPU core per
-camera). With a GPU, set `h264_options: "#video=h264#hardware"` in the config. To always use
-MJPEG for one camera, set `h264: false` under its `camera:`. Browsers that can't play H.264
-streams (iOS before 17.1) get MJPEG automatically.
+**Live view quality.** The H.264 settings are the `h264live` preset in `go2rtc/go2rtc.yaml`: the
+camera's own resolution at up to 4 Mbit/s, converted only while someone watches (about 40% of a
+CPU core per camera on a desktop processor). On a slow upload, use the softer 720p preset with
+`h264_options: "#video=h264lite#width=1280"`. With a GPU, set
+`h264_options: "#video=h264#hardware"`. To always use MJPEG for one camera, set `h264: false`
+under its `camera:`. Browsers that can't play H.264 streams (iOS before 17.1) get MJPEG
+automatically.
 
 All settings are explained in [`config/config.example.yaml`](config/config.example.yaml).
 
