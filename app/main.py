@@ -127,9 +127,22 @@ async def lifespan(_app: FastAPI):
     await _app.state.stream_client.aclose()
 
 
+# Browsers must check for a newer version of the pages and scripts (a cheap 304 when nothing
+# changed). Without this they guess how long to reuse their copy, and after an update an old
+# cached script can end up next to a new page and break it.
+NO_CACHE = {"Cache-Control": "no-cache"}
+
+
+class Static(StaticFiles):
+    def file_response(self, *args, **kwargs):
+        response = super().file_response(*args, **kwargs)
+        response.headers.update(NO_CACHE)
+        return response
+
+
 app = FastAPI(title="PrintPeek", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
 app.add_middleware(AdminSession)
-app.mount("/static", StaticFiles(directory=STATIC), name="static")
+app.mount("/static", Static(directory=STATIC), name="static")
 app.mount("/media", StaticFiles(directory=MEDIA), name="media")
 
 
@@ -137,39 +150,39 @@ app.mount("/media", StaticFiles(directory=MEDIA), name="media")
 
 @app.get("/", include_in_schema=False)
 async def index():
-    return FileResponse(STATIC / "index.html")
+    return FileResponse(STATIC / "index.html", headers=NO_CACHE)
 
 
 @app.get("/login", include_in_schema=False)
 async def login_page(request: Request):
     if is_admin(request):
         return RedirectResponse("/", status_code=303)
-    return FileResponse(STATIC / "login.html")
+    return FileResponse(STATIC / "login.html", headers=NO_CACHE)
 
 
 @app.get("/watch/{printer_id}", include_in_schema=False)
 async def watch(printer_id: str):
     if printer_id not in monitors:
         raise HTTPException(404, "unknown printer")
-    return FileResponse(STATIC / "watch.html")  # the page itself says when it isn't live
+    return FileResponse(STATIC / "watch.html", headers=NO_CACHE)  # the page itself says when it isn't live
 
 
 # The app can be installed on a phone's home screen (PWA). The service worker has to be served
 # from the root to cover the whole site.
 @app.get("/manifest.webmanifest", include_in_schema=False)
 async def manifest():
-    return FileResponse(STATIC / "manifest.webmanifest", media_type="application/manifest+json")
+    return FileResponse(STATIC / "manifest.webmanifest", media_type="application/manifest+json", headers=NO_CACHE)
 
 
 @app.get("/sw.js", include_in_schema=False)
 async def service_worker():
-    return FileResponse(STATIC / "sw.js", media_type="text/javascript", headers={"Cache-Control": "no-cache"})
+    return FileResponse(STATIC / "sw.js", media_type="text/javascript", headers=NO_CACHE)
 
 
 @app.get("/share/{token}", include_in_schema=False)
 async def share_page(token: str):
     _shared(token)
-    return FileResponse(STATIC / "share.html")
+    return FileResponse(STATIC / "share.html", headers=NO_CACHE)
 
 
 # -- login ------------------------------------------------------------------
