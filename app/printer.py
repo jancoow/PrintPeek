@@ -342,7 +342,7 @@ class PrinterMonitor:
                 frame = self._end_frame
             if frame:
                 job.add_frame(frame)
-        job.finish(result, self.raw.get("print_stats", {}))
+        job.finish(result, self.raw.get("print_stats", {}), self.metadata if self._metadata_for == job.filename else None)
         self.state_file.unlink(missing_ok=True)
         log.info("%s: print %s (%s), %d frames", self.cfg.id, result, job.filename, job.frames)
         timelapse.schedule_render(job.dir, self.app.timelapse)

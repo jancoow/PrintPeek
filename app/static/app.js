@@ -263,13 +263,79 @@ function statusText(t) {
   }
 }
 
+// Large thumbnails or a compact list, remembered per device
+let view = "grid";
+try { view = localStorage.getItem("timelapse-view") === "list" ? "list" : "grid"; } catch {}
+
+function setView(v) {
+  view = v;
+  try { localStorage.setItem("timelapse-view", v); } catch {}
+  renderTimelapses();
+}
+document.querySelectorAll(".view-switch button").forEach((b) => (b.onclick = () => setView(b.dataset.view)));
+
+function fmtFilament(t) {
+  if (t.filament_grams) return `${Math.round(t.filament_grams)} g`;
+  if (t.filament_used) return `${(t.filament_used / 1000).toFixed(1)} m`;
+  return "–";
+}
+
+function timelapseTitle(t) {
+  return t.filename.split("/").pop().replace(/\.gcode$/i, "");
+}
+
+function timelapseRow(t) {
+  const row = document.createElement("button");
+  row.className = "tl-row";
+  const thumb = document.createElement("span");
+  thumb.className = "tl-thumb";
+  if (t.thumb_url) {
+    const img = document.createElement("img");
+    img.src = t.thumb_url;
+    img.alt = "";
+    img.loading = "lazy";
+    thumb.append(img);
+  } else {
+    thumb.textContent = t.status === "recording" ? "●" : "–";
+  }
+  const date = new Date(t.started * 1000).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  const main = document.createElement("span");
+  main.className = "tl-main";
+  main.innerHTML = `<span class="title"></span><span class="sub"><span class="printer"></span> · ${date}</span>`;
+  main.querySelector(".title").textContent = timelapseTitle(t);
+  main.querySelector(".printer").textContent = t.printer_name;
+  const stats = document.createElement("span");
+  stats.className = "tl-stats";
+  const stat = (label, value, cls = "") => {
+    const s = document.createElement("span");
+    s.className = cls;
+    s.innerHTML = `<small></small><b></b>`;
+    s.querySelector("small").textContent = label;
+    s.querySelector("b").textContent = value;
+    return s;
+  };
+  const busy = t.status !== "done";
+  stats.append(
+    stat("Result", t.status === "recording" ? "recording" : (t.result || "–") + (t.share_token ? " · 🔗" : ""), `result-${t.result || ""}`),
+    stat("Print time", t.print_duration ? fmtDuration(t.print_duration) : "–"),
+    stat("Filament", fmtFilament(t)),
+    stat("Video", t.status === "recording" ? `${t.frames} ${t.frames === 1 ? "frame" : "frames"}` : busy ? statusText(t) : `${Math.round(t.video_duration || 0)} s`),
+  );
+  row.append(thumb, main, stats);
+  row.onclick = () => openPlayer(t);
+  return row;
+}
+
 function renderTimelapses() {
   const list = timelapses.filter((t) => filter === "all" || t.printer === filter);
   const grid = document.getElementById("timelapses");
+  grid.className = view === "list" ? "tl-list" : "grid";
+  document.querySelectorAll(".view-switch button").forEach((b) => b.classList.toggle("on", b.dataset.view === view));
   if (!list.length) {
     grid.innerHTML = `<div class="empty">No timelapses yet. They appear here as soon as a print starts.</div>`;
     return;
   }
+  if (view === "list") return grid.replaceChildren(...list.map(timelapseRow));
   grid.replaceChildren(...list.map((t) => {
     const b = document.createElement("button");
     b.className = "tl";
@@ -284,7 +350,7 @@ function renderTimelapses() {
         <div class="sub"><span class="printer"></span><span>${date}</span></div>
         <div class="sub"><span class="result-${t.result || ""}">${t.result || ""}${t.share_token ? " · 🔗 shared" : ""}</span><span>${statusText(t)}</span></div>
       </div>`;
-    b.querySelector(".title").textContent = t.filename.split("/").pop().replace(/\.gcode$/i, "");
+    b.querySelector(".title").textContent = timelapseTitle(t);
     b.querySelector(".printer").textContent = t.printer_name;
     b.onclick = () => openPlayer(t);
     return b;

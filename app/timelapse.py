@@ -113,11 +113,16 @@ class Job:
         self.meta["frames"] = self.frames
         write_meta(self.dir, self.meta)
 
-    def finish(self, result: str, print_stats: dict) -> None:
+    def finish(self, result: str, print_stats: dict, gcode_meta: dict | None = None) -> None:
         self.meta.update(ended=time.time(), result=result, status="queued", frames=self.frames)
         for key in ("print_duration", "filament_used"):
             if print_stats.get(key):
                 self.meta[key] = print_stats[key]
+        # Grams: the slicer's estimate for the whole file, scaled to the filament actually used
+        # (so a cancelled print counts what it used)
+        grams, length = (gcode_meta or {}).get("filament_weight_total"), (gcode_meta or {}).get("filament_total")
+        if grams and length and self.meta.get("filament_used"):
+            self.meta["filament_grams"] = round(grams * min(1.0, self.meta["filament_used"] / length), 1)
         write_meta(self.dir, self.meta)
 
 

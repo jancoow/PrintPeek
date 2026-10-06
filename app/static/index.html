@@ -32,7 +32,13 @@
     <section id="timelapse-section" class="timelapses" hidden>
       <div class="section-head">
         <h2>Timelapses</h2>
-        <div id="filters" class="chips"></div>
+        <div class="section-tools">
+          <div id="filters" class="chips"></div>
+          <div class="view-switch" role="group" aria-label="Layout">
+            <button data-view="grid" title="Large thumbnails" aria-label="Large thumbnails"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1.5"/><rect x="9" y="1" width="6" height="6" rx="1.5"/><rect x="1" y="9" width="6" height="6" rx="1.5"/><rect x="9" y="9" width="6" height="6" rx="1.5"/></svg></button>
+            <button data-view="list" title="List" aria-label="List"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><rect x="1" y="2" width="4" height="3" rx="1"/><rect x="6.5" y="2.5" width="8.5" height="2" rx="1"/><rect x="1" y="6.5" width="4" height="3" rx="1"/><rect x="6.5" y="7" width="8.5" height="2" rx="1"/><rect x="1" y="11" width="4" height="3" rx="1"/><rect x="6.5" y="11.5" width="8.5" height="2" rx="1"/></svg></button>
+          </div>
+        </div>
       </div>
       <div id="timelapses" class="grid"></div>
     </section>
