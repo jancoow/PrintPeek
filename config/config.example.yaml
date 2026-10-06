@@ -14,6 +14,7 @@ printers:
     #   rotation: 180
     #   flip_horizontal: false
     #   flip_vertical: false
+    #   h264: true                    # H.264 live view through go2rtc (false: always MJPEG)
 
   - id: ender
     name: Ender 3
@@ -21,6 +22,9 @@ printers:
 
 # Re-streaming through go2rtc (the other container). Remove to proxy the camera directly.
 go2rtc: http://go2rtc:1984
+# How go2rtc makes the H.264 live view; "h264live" is a preset in go2rtc/go2rtc.yaml.
+# With a GPU: "#video=h264#hardware"
+# h264_options: "#video=h264live#width=1280"
 
 timelapse:
   mode: layer          # layer: one frame per layer change | interval: one frame every `interval` seconds

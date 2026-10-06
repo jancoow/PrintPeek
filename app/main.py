@@ -9,6 +9,7 @@ import asyncio
 import contextlib
 import hashlib
 import hmac
+import json
 import logging
 import os
 import secrets
@@ -19,7 +20,8 @@ from pathlib import Path
 from typing import Literal
 
 import httpx
-from fastapi import FastAPI, HTTPException, Request
+import websockets
+from fastapi import FastAPI, HTTPException, Request, WebSocket
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -91,7 +93,7 @@ class AdminSession:
         return morsel is not None and _valid_session(morsel.value)
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] != "http":
+        if scope["type"] not in ("http", "websocket"):
             return await self.app(scope, receive, send)
         admin = CONFIG.auth is None or self._has_session(scope)
         scope.setdefault("state", {})["admin"] = admin
@@ -295,6 +297,57 @@ async def event_photo(printer_id: str):
     if monitor is None or monitor.event_photo is None:
         raise HTTPException(404, "no photo")
     return Response(monitor.event_photo, media_type="image/jpeg", headers={"Cache-Control": "no-store"})
+
+
+@app.websocket("/api/printers/{printer_id}/live")
+async def live_h264(ws: WebSocket, printer_id: str):
+    """H.264 live view: relays go2rtc's fragmented MP4 stream for the browser's MediaSource.
+
+    go2rtc's own API stays unreachable: the only thing passed on to it is the browser's list of
+    codecs, and nothing the browser sends after that.
+    """
+    admin = ws.scope["state"]["admin"]
+    monitor = monitors.get(printer_id)
+    url = monitor.h264_url() if monitor and (admin or monitor.public.live) else None
+    if url is None or (not admin and monitor.viewers >= CONFIG.max_viewers):
+        return await ws.close(code=4404 if url is None else 4503)
+    await ws.accept()
+    try:
+        hello = await asyncio.wait_for(ws.receive_json(), 10)
+    except Exception:
+        return await ws.close(code=4400)
+    codecs = hello.get("value") if isinstance(hello, dict) and hello.get("type") == "mse" else None
+    if not isinstance(codecs, str) or len(codecs) > 300:
+        return await ws.close(code=4400)
+
+    async def relay(upstream):
+        async for message in upstream:
+            if not admin and not monitor.public.live:
+                return  # switched to private (or the timer ran out): guests are cut off
+            if isinstance(message, bytes):
+                await ws.send_bytes(message)
+            else:
+                await ws.send_text(message)
+
+    async def until_closed():
+        while (await ws.receive())["type"] != "websocket.disconnect":
+            pass  # the browser has nothing more to say
+
+    monitor.viewers += 1
+    try:
+        async with websockets.connect(url, max_size=None, open_timeout=10) as upstream:
+            await upstream.send(json.dumps({"type": "mse", "value": codecs}))
+            tasks = [asyncio.create_task(relay(upstream)), asyncio.create_task(until_closed())]
+            _, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+            for task in pending:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+    except (OSError, asyncio.TimeoutError, websockets.WebSocketException):
+        pass
+    finally:
+        monitor.viewers -= 1
+        with contextlib.suppress(Exception):
+            await ws.close()
 
 
 class PublicUpdate(BaseModel):

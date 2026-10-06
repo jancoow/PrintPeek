@@ -16,7 +16,8 @@
     html, body { height: 100%; }
     body { display: flex; flex-direction: column; background: #000; color: #fff; }
     .stage { flex: 1; min-height: 0; display: grid; place-items: center; overflow: hidden; }
-    .stage img { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .stage img, .stage video { max-width: 100%; max-height: 100%; object-fit: contain; }
+    .stage video { width: 100%; height: 100%; }
     .offair { color: #8d95a3; text-align: center; padding: 16px; }
     .info {
       display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: center;
@@ -32,6 +33,7 @@
 <body>
   <div class="stage">
     <img id="cam" alt="Live camera">
+    <video id="video" muted playsinline hidden></video>
     <p id="offair" class="offair" hidden>This printer isn't live right now. This page will pick it up when it is.</p>
   </div>
   <div class="info" id="info" hidden>
@@ -49,7 +51,7 @@
   <script>
     const id = location.pathname.split("/").filter(Boolean).pop();
     const $ = (s) => document.getElementById(s);
-    const stream = liveStream($("cam"), id);
+    const stream = liveStream($("cam"), $("video"), id);
 
     function offAir() {
       stream.set(false);
@@ -75,8 +77,11 @@
         $("progress").textContent = active ? `${(p.progress * 100).toFixed(1)}%` : "";
         $("layer").textContent = p.layer ? `${p.layer}${p.total_layers ? " / " + p.total_layers : ""}` : "–";
         $("eta").textContent = active ? fmtDuration(p.eta) : "–";
-        $("cam").style.transform = camTransform(p.camera);
-        stream.set(p.camera.available);
+        $("finish-box").hidden = !(p.state === "printing" && p.finish_at);
+        $("finish").textContent = fmtFinish(p.finish_at);
+        setImage($("thumb"), active ? thumbUrl(p) : "");
+        $("cam").style.transform = $("video").style.transform = camTransform(p.camera);
+        stream.set(p.camera.available, p.camera.h264);
       } catch (e) { console.warn(e); }
     }
     refresh();

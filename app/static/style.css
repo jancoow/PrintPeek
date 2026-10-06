@@ -69,7 +69,7 @@ h3 { font-size: 16px; margin: 0; }
   position: relative; display: block;
   aspect-ratio: 16 / 9; background: #000; overflow: hidden;
 }
-.cam img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.cam img, .cam video { width: 100%; height: 100%; object-fit: contain; display: block; }
 .cam .nocam {
   position: absolute; inset: 0; display: grid; place-items: center;
   color: #9aa0aa; font-size: 14px;

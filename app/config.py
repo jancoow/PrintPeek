@@ -21,6 +21,7 @@ class CameraConfig:
     rotation: int | None = None
     flip_horizontal: bool | None = None
     flip_vertical: bool | None = None
+    h264: bool = True  # offer the H.264 live view (needs go2rtc)
 
 
 @dataclass
@@ -89,6 +90,9 @@ def load_config(path: str | os.PathLike) -> Config:
         raise ValueError("config: timelapse.mode must be 'layer' or 'interval'")
 
     auth = raw.get("auth")
+    h264_options = str(raw.get("h264_options", "#video=h264live#width=1280")).strip()
+    if any(c.isspace() for c in h264_options):
+        raise ValueError("config: h264_options can't contain spaces (go2rtc refuses them); define an ffmpeg preset in go2rtc.yaml")
     return Config(
         printers=printers,
         timelapse=timelapse,

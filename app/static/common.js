@@ -51,13 +51,28 @@ function camTransform(cam) {
 
 // Drives an <img> showing a printer's MJPEG re-stream: reconnects after errors and
 // disconnects while the tab is hidden. Call .set(false) to stop it.
-function liveStream(img, printerId) {
-  let active = false;
-  let retry;
+function liveStream(img, video, printerId) {
+  let active = false, h264 = false, player = null, failures = 0, retry;
   const load = () => {
     clearTimeout(retry);
-    if (active && !document.hidden) img.src = `/api/printers/${printerId}/stream.mjpeg?t=${Date.now()}`;
-    else img.removeAttribute("src");
+    player?.stop();
+    player = null;
+    const show = active && !document.hidden;
+    const useH264 = show && h264 && failures < 2 && h264Support();
+    video.hidden = !useH264;
+    img.hidden = !show || useH264;
+    if (useH264) {
+      img.removeAttribute("src");
+      player = h264Player(video, printerId, (started) => {
+        player = null;
+        failures = started ? 0 : failures + 1; // never started twice: stay on MJPEG
+        retry = setTimeout(load, started ? 2000 : 0);
+      });
+    } else if (show) {
+      img.src = `/api/printers/${printerId}/stream.mjpeg?t=${Date.now()}`;
+    } else {
+      img.removeAttribute("src");
+    }
   };
   img.addEventListener("error", () => {
     clearTimeout(retry);
@@ -65,9 +80,10 @@ function liveStream(img, printerId) {
   });
   document.addEventListener("visibilitychange", load);
   return {
-    set(on) {
-      if (on !== active) {
+    set(on, canH264 = false) {
+      if (on !== active || canH264 !== h264) {
         active = on;
+        h264 = canH264;
         load();
       }
     },

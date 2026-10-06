@@ -15,7 +15,7 @@ function createCard(p) {
   q(".share").addEventListener("click", () => copyText(`${location.origin}/watch/${p.id}`));
   q(".public-mode").addEventListener("change", (e) => setPublic(p.id, e.target));
   document.getElementById("printers").append(el);
-  const card = { el, q, stream: liveStream(q(".cam img"), p.id) };
+  const card = { el, q, stream: liveStream(q(".cam img"), q(".cam video"), p.id) };
   cards.set(p.id, card);
   return card;
 }
@@ -39,8 +39,8 @@ function updateCard(p) {
   const { q } = card;
   const active = p.state === "printing" || p.state === "paused";
 
-  card.stream.set(p.camera.available);
-  q(".cam img").style.transform = camTransform(p.camera);
+  card.stream.set(p.camera.available, p.camera.h264);
+  q(".cam img").style.transform = q(".cam video").style.transform = camTransform(p.camera);
   q(".nocam").hidden = p.camera.available;
   q(".badge:not(.visibility)").hidden = !p.recording;
   q(".frames").textContent = p.frames ? `· ${p.frames} frames` : "";

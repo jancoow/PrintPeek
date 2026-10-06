@@ -1,8 +1,15 @@
-# The printer monitor registers each printer's camera here automatically (by printer id).
+# The printer monitor registers each printer's camera here automatically (by printer id), plus
+# an H.264 version of it (<id>_h264) that uses a fraction of the bandwidth of MJPEG.
 # You can also add streams by hand, e.g.:
 # streams:
 #   voron: http://192.168.1.50/webcam/?action=stream
 api:
   listen: ":1984"
 rtsp:
-  listen: ":8554"
+  listen: ":8554"   # also used internally by the H.264 transcoding, keep it on
+
+ffmpeg:
+  # The H.264 live view (h264_options in the app's config). Capped at 1.5 Mbit/s: printer cameras
+  # are noisy, and without a cap a 1080p camera easily takes 6 Mbit/s. For a GPU, use the app's
+  # h264_options: "#video=h264#hardware" instead.
+  h264live: "-c:v libx264 -g 20 -profile:v high -level:v 4.1 -preset:v superfast -tune:v zerolatency -pix_fmt:v yuv420p -maxrate 1500k -bufsize 3000k"

@@ -182,6 +182,13 @@ class PrinterMonitor:
         self._go2rtc_at = 0.0
         log.info("%s: camera %r stream=%s snapshot=%s", self.cfg.id, webcam.get("name"), self.stream_url, self.snapshot_url)
 
+    def _go2rtc_streams(self) -> dict[str, str]:
+        streams = {self.cfg.id: self.stream_url}
+        if self.cfg.camera.h264:
+            # Transcodes the stream above, only while someone watches it
+            streams[f"{self.cfg.id}_h264"] = f"ffmpeg:{self.cfg.id}{self.app.h264_options}"
+        return streams
+
     async def _ensure_go2rtc_stream(self) -> None:
         """Register the camera with go2rtc (again, if go2rtc restarted) so it can fan it out."""
         if not (self.app.go2rtc and self.stream_url):
@@ -192,10 +199,17 @@ class PrinterMonitor:
         try:
             r = await self.client.get(f"{self.app.go2rtc}/api/streams")
             r.raise_for_status()
-            if self.cfg.id not in (r.json() or {}):
-                r = await self.client.put(f"{self.app.go2rtc}/api/streams", params={"name": self.cfg.id, "src": self.stream_url})
-                r.raise_for_status()
-                log.info("%s: registered stream with go2rtc", self.cfg.id)
+            existing = r.json() or {}
+            for name, src in self._go2rtc_streams().items():
+                if name not in existing:
+                    r = await self.client.put(f"{self.app.go2rtc}/api/streams", params={"name": name, "src": src})
+                    r.raise_for_status()
+                    log.info("%s: registered stream %s with go2rtc", self.cfg.id, name)
+                elif src not in [p.get("url") for p in (existing[name] or {}).get("producers") or []]:
+                    # the camera URL or h264_options changed since go2rtc last heard from us
+                    r = await self.client.patch(f"{self.app.go2rtc}/api/streams", params={"name": name, "src": src})
+                    r.raise_for_status()
+                    log.info("%s: updated stream %s in go2rtc", self.cfg.id, name)
             self.go2rtc_ok = True
         except httpx.HTTPError as e:
             if self.go2rtc_ok:
@@ -206,6 +220,13 @@ class PrinterMonitor:
         if self.app.go2rtc and self.go2rtc_ok:
             return f"{self.app.go2rtc}/api/stream.mjpeg?src={self.cfg.id}"
         return self.stream_url
+
+    def h264_url(self) -> str | None:
+        """go2rtc's H.264 stream as fragmented MP4 over a WebSocket (for the browser's MediaSource)."""
+        if self.app.go2rtc and self.go2rtc_ok and self.cfg.camera.h264:
+            ws_base = self.app.go2rtc.replace("http://", "ws://", 1).replace("https://", "wss://", 1)
+            return f"{ws_base}/api/ws?src={self.cfg.id}_h264"
+        return None
 
     async def snapshot(self, max_age: float = 0.0) -> bytes | None:
         """A camera frame. With max_age, a recent frame is reused so a burst of public
@@ -533,7 +554,7 @@ class PrinterMonitor:
             "tools": self._tools(active_tool, active) if multi_tool else None,
             "event": self.event,
             "bed": {"temp": bed.get("temperature"), "target": bed.get("target")} if bed else None,
-            "camera": {"available": bool(self.stream_url or self.snapshot_url), **self.transform},
+            "camera": {"available": bool(self.stream_url or self.snapshot_url), "h264": self.h264_url() is not None, **self.transform},
             "recording": self.job is not None,
             "frames": self.job.frames if self.job else 0,
         }

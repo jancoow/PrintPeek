@@ -91,7 +91,8 @@ it with `final_frame: before_end` or `after_end` per printer.
 
 If you want to reach it from outside, put it behind a reverse proxy with HTTPS (Nginx Proxy
 Manager, Caddy, Cloudflare Tunnel) and make sure `auth` is set in the config. Only expose port
-9022.
+9022. The H.264 live view uses a WebSocket, so turn on WebSocket support in the proxy ("Websockets
+Support" in Nginx Proxy Manager). Without it, viewers get the MJPEG stream.
 
 Without logging in, people only see the printers you made public and the timelapses you shared.
 The app never sends commands to the printers, it only reads status and camera images.
