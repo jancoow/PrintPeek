@@ -90,17 +90,24 @@ spaghetti detection.
 
 ## Quick start
 
-You need a machine with Docker that can reach your printers, like a home server or a Raspberry Pi.
+You need a machine with Docker that can reach your printers, like a home server or a Raspberry Pi
+4/5 (64-bit). The image is ready-made on `ghcr.io/jancoow/printpeek`, so there's nothing to build.
 
 ```sh
 git clone https://github.com/jancoow/PrintPeek.git
 cd PrintPeek
 cp config/config.example.yaml config/config.yaml
 nano config/config.yaml          # add your printers and pick a username and password
-docker compose up -d --build
+docker compose up -d
 ```
 
 Open `http://<server>:9022` and you'll see your printers.
+
+To update later:
+
+```sh
+git pull && docker compose pull && docker compose up -d
+```
 
 The only printer-side requirement is that Moonraker accepts requests from the server. Add the
 server's IP to `trusted_clients` in `moonraker.conf`, or set an `api_key` for the printer in the
