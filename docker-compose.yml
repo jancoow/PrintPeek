@@ -21,6 +21,11 @@ services:
   # so it's deliberately not published.
   go2rtc:
     image: alexxit/go2rtc:latest
+    # Hardware encoding with an Intel (Quick Sync) or AMD graphics chip: use the image with the
+    # drivers, pass the chip in, and set h264_options in config.yaml (see go2rtc/go2rtc.yaml).
+    # image: alexxit/go2rtc:latest-hardware
+    # devices:
+    #   - /dev/dri:/dev/dri
     container_name: printpeek-go2rtc
     restart: unless-stopped
     ports:

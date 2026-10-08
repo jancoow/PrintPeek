@@ -23,7 +23,8 @@ printers:
 # Re-streaming through go2rtc (the other container). Remove to proxy the camera directly.
 go2rtc: http://go2rtc:1984
 # How go2rtc makes the H.264 live view; "h264live" is a preset in go2rtc/go2rtc.yaml.
-# With a GPU: "#video=h264#hardware". For a slow upload: "#video=h264lite#width=1280"
+# With Intel Quick Sync or an AMD GPU (see docker-compose.yml): "#video=h264live#hardware=vaapi"
+# For a slow upload: "#video=h264lite#width=1280"
 # h264_options: "#video=h264live"
 
 timelapse:

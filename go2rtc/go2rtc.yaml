@@ -13,8 +13,13 @@ ffmpeg:
   # (CRF) with a 4 Mbit/s ceiling: about 3 Mbit/s for a 1080p printer camera, where its MJPEG
   # stream takes about 12. "veryfast" keeps fine detail like the bed texture; no B-frames and no
   # lookahead keep the delay at a few tenths of a second. (zerolatency would do that too, but at
-  # 1080p it needs several CPU cores.) For a GPU, use the app's h264_options: "#video=h264#hardware".
+  # 1080p it needs several CPU cores.)
   h264live: "-c:v libx264 -g 20 -profile:v high -level:v 4.1 -preset:v veryfast -bf 0 -rc-lookahead 0 -pix_fmt:v yuv420p -crf 26 -maxrate 4000k -bufsize 8000k"
+  # With an Intel (Quick Sync) or AMD graphics chip, set the app's
+  #   h264_options: "#video=h264live#hardware=vaapi"
+  # and go2rtc decodes and encodes on the graphics chip instead, with the settings below (same
+  # 4 Mbit/s ceiling, no B-frames for a short delay). See docker-compose.yml for the container part.
+  h264/vaapi: "-c:v h264_vaapi -g 20 -bf 0 -profile:v high -level:v 4.1 -sei:v 0 -rc_mode VBR -b:v 3000k -maxrate 4000k"
   # For a slow upload: 720p at most 1.5 Mbit/s, visibly softer.
   # Use with h264_options: "#video=h264lite#width=1280"
   h264lite: "-c:v libx264 -g 20 -profile:v high -level:v 4.1 -preset:v superfast -tune:v zerolatency -pix_fmt:v yuv420p -maxrate 1500k -bufsize 3000k"

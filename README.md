@@ -165,10 +165,16 @@ ends the video on the last layer instead. You can force either behaviour with
 **Live view quality.** The H.264 settings are the `h264live` preset in `go2rtc/go2rtc.yaml`: the
 camera's own resolution at up to 4 Mbit/s, converted only while someone watches (about 40% of a
 CPU core per camera on a desktop processor). On a slow upload, use the softer 720p preset with
-`h264_options: "#video=h264lite#width=1280"`. With a GPU, set
-`h264_options: "#video=h264#hardware"`. To always use MJPEG for one camera, set `h264: false`
-under its `camera:`. Browsers that can't play H.264 streams (iOS before 17.1) get MJPEG
+`h264_options: "#video=h264lite#width=1280"`. To always use MJPEG for one camera, set
+`h264: false` under its `camera:`. Browsers that can't play H.264 streams (iOS before 17.1) get MJPEG
 automatically.
+
+**Hardware encoding.** With an Intel processor that has built-in graphics (Quick Sync) or an AMD
+graphics card, the conversion to H.264 can run on the graphics chip and costs almost no CPU. In
+`docker-compose.yml`, switch go2rtc to the `latest-hardware` image and pass in `/dev/dri` (the lines
+are there, commented out), then set `h264_options: "#video=h264live#hardware=vaapi"` in the config.
+On Unraid, `/dev/dri` appears once the Intel GPU driver is loaded, for example with the "Intel GPU
+TOP" plugin.
 
 All settings are explained in [`config/config.example.yaml`](config/config.example.yaml).
 
