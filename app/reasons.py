@@ -25,6 +25,7 @@ EXCEPTIONS = {
     "detected dirty bed": "Something on the bed, detected by the printer's camera",
 }
 
+RUNOUT = re.compile(r"\be(\d+)[ _]filament[ _]runout\b", re.I)  # Snapmaker: "e0_filament runout"
 LOG_EXCEPTION = re.compile(r"klippy raise exception: (\{[^\n]{0,2000}\})")
 TOOL_NAME = re.compile(r"^(?:e|extruder|t|tool)(\d+)(?:_|$)", re.I)
 CONSOLE_HINT = re.compile(r"runout|run out|clog|tangl|jam", re.I)
@@ -52,7 +53,10 @@ def sensor_tool(sensor: str) -> int | None:
 def from_exception(exc: dict) -> dict:
     message = str(exc.get("message") or "").strip()
     code = "-".join(str(exc.get(k, "?")) for k in ("id", "index", "code"))
-    text = EXCEPTIONS.get(message.lower()) or f"Printer error: {message or 'no message'}"
+    if runout := RUNOUT.search(message):
+        text = f"Filament ran out on T{runout.group(1)}"
+    else:
+        text = EXCEPTIONS.get(message.lower()) or f"Printer error: {message or 'no message'}"
     return reason(text, "printer", f"error {code}: {message}")
 
 

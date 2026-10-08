@@ -7,6 +7,7 @@ height, the same way Mainsail estimates layers.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import math
 import posixpath
@@ -37,8 +38,11 @@ CHECK_GO2RTC = 30.0
 PRINT_HEIGHT_MARGIN = 2.0  # mm above the print's top that still counts as "at print height" (z-hops, lifts)
 BED_AWAY = 20.0  # mm above the print's top after the end G-code: the bed (or head) moved out of view
 END_FRAME_INTERVAL = 2.0  # seconds between the frames kept during the last layer
-REASON_DELAY = 3.0  # seconds after a pause before looking for its reason, so the printer has logged it
-REASON_WINDOW = 120.0  # seconds before the pause that a reported error or console message counts
+# Seconds after a pause to look for its reason. Printers report some reasons late: a Snapmaker U1
+# reports a filament runout about 8 s after it paused.
+REASON_ATTEMPTS = (3.0, 10.0, 25.0)
+REASON_WINDOW = 120.0  # seconds before the pause that a console message or a pause in the gcode counts
+EXCEPTION_WINDOW = 15.0  # seconds before the pause that a printer's error report counts
 GCODE_TAIL = 4096  # bytes of the gcode file before the pause point to look for a pause command
 LOG_TAIL = 65536  # bytes of moonraker.log to look for a Snapmaker error report
 OFFLINE_ALERT = 120.0  # seconds without contact during a print before a notification goes out
@@ -95,9 +99,12 @@ class PrinterMonitor:
 
         self.event: dict | None = None  # the current pause or error and why, for the dashboard
         self.event_photo: bytes | None = None
-        self._event_due: float | None = None
+        self._reason_attempts: list[float] = []  # when to look (again) for the reason of the current pause
         self._prev_state: str | None = None
-        self._last_exception: tuple[float, dict] | None = None
+        # Error reports (exception_manager) as they appear, with when. A Snapmaker lists some only for
+        # a moment, and keeps others listed long after resuming, so what counts is when one appeared.
+        self._listed_exceptions: set[str] | None = None
+        self._new_exceptions: list[tuple[float, dict]] = []
         self._sensors_ok: set[str] = set()  # filament sensors that saw filament during this print
 
     # -- main loop ---------------------------------------------------------
@@ -410,8 +417,12 @@ class PrinterMonitor:
         """On a pause or error: keep a camera frame of that moment and find out why."""
         ps = self.raw.get("print_stats", {})
         state, now = ps.get("state"), time.time()
-        if exceptions := (self.raw.get("exception_manager") or {}).get("exceptions"):
-            self._last_exception = (now, exceptions[-1])
+        listed = {json.dumps(e, sort_keys=True, default=str): e
+                  for e in (self.raw.get("exception_manager") or {}).get("exceptions") or [] if isinstance(e, dict)}
+        if self._listed_exceptions is not None:  # what was listed when the app started is too old to place
+            self._new_exceptions += [(now, e) for k, e in listed.items() if k not in self._listed_exceptions]
+            self._new_exceptions = [(seen, e) for seen, e in self._new_exceptions if now - seen < 600]
+        self._listed_exceptions = set(listed)
         if state == "printing":
             if self._prev_state not in ACTIVE:
                 self._sensors_ok = set()  # a new print
@@ -420,19 +431,24 @@ class PrinterMonitor:
         if state != self._prev_state:
             first = self._prev_state is None  # already paused when the app started: the time is unknown
             self._prev_state = state
-            self.event = self.event_photo = self._event_due = None
+            self.event = self.event_photo = None
+            self._reason_attempts = []
             if state in ("paused", "error"):
                 self.event_photo = await self.snapshot()
                 self.event = {"kind": state, "at": None if first else now, "reason": None, "photo": self.event_photo is not None}
-                self._event_due = now if first else now + REASON_DELAY
+                self._reason_attempts = [now] if first else [now + delay for delay in REASON_ATTEMPTS]
 
-        if self._event_due is not None and now >= self._event_due:
-            self._event_due = None
-            self.event["reason"] = await self._find_reason(state)
-            log.info("%s: print %s: %s", self.cfg.id, state, self.event["reason"]["text"])
+        if self._reason_attempts and now >= self._reason_attempts[0]:
+            self._reason_attempts.pop(0)
+            reason = await self._find_reason(state)
+            if reason is reasons.UNKNOWN and self._reason_attempts:
+                return  # not reported (yet): look again in a moment
+            self._reason_attempts = []
+            self.event["reason"] = reason
+            log.info("%s: print %s: %s", self.cfg.id, state, reason["text"])
             if self.event["at"] is not None:  # seen as it happened, not found like this at startup
                 what = "paused" if state == "paused" else "stopped with an error"
-                self._notify(what, self.event["reason"]["text"], self.event_photo)
+                self._notify(what, reason["text"], self.event_photo)
 
     async def _find_reason(self, state: str) -> dict:
         ps = self.raw.get("print_stats", {})
@@ -440,13 +456,16 @@ class PrinterMonitor:
             return reasons.reason(ps.get("message") or "Klipper reported an error", "printer")
         at = self.event.get("at") if self.event else None
         since = at - REASON_WINDOW if at else time.time() - (ps.get("total_duration") or 0)
-        if self._last_exception and self._last_exception[0] >= since:
-            return reasons.from_exception(self._last_exception[1])
+        exceptions_since = at - EXCEPTION_WINDOW if at else since
+        new = [(seen, e) for seen, e in self._new_exceptions if at and seen >= exceptions_since]
+        if new:
+            return reasons.from_exception(max(new, key=lambda n: n[0])[1])
         if found := self._runout():
             return found
-        for find in (self._reason_from_gcode, self._reason_from_console, self._reason_from_log):
+        for find, window_start in ((self._reason_from_gcode, since), (self._reason_from_console, since),
+                                   (self._reason_from_log, exceptions_since)):
             try:
-                if found := await find(since):
+                if found := await find(window_start):
                     return found
             except (httpx.HTTPError, RuntimeError, KeyError, TypeError, ValueError) as e:
                 log.debug("%s: %s: %s", self.cfg.id, find.__name__, e)
