@@ -79,6 +79,8 @@ Timelapses stay private too. Share a single video with a link of its own, and ta
 - **Looks, doesn't touch.** PrintPeek never sends a command to a printer. It only reads status and
   camera images.
 
+<p align="center"><img src="docs/pause-reason.png" alt="A paused print, with the reason: filament ran out on T0" width="420"></p>
+
 ## Works with
 
 Any printer running Klipper and Moonraker with a webcam set up in Mainsail or Fluidd: a Voron, a
