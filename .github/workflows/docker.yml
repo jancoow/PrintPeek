@@ -8,6 +8,7 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
+    paths-ignore: ["README.md", "docs/**", "LICENSE"]  # nothing in the image changes
   workflow_dispatch:
 
 permissions:
